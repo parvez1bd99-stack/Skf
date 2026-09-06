@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartConnect - ইনভেন্টরি ম্যানেজমেন্ট</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .modal-animation { animation: slideUp 0.2s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        textarea { resize: none; }
+    </style>
+</head>
+<body class="pb-20">
+
+    <div class="bg-slate-900 text-white px-6 py-8 rounded-b-[3rem] shadow-xl mb-6">
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="history.back()" class="text-blue-400 font-bold flex items-center">← ফিরে যান</button>
+            <h1 class="text-xl font-black italic">ওষুধ ইনভেন্টরি</h1>
+            <div class="w-8"></div>
+        </div>
+        <div class="relative">
+            <span class="absolute left-4 top-3.5 text-gray-400">🔍</span>
+            <input type="text" id="searchInput" oninput="filterMeds()" placeholder="ওষুধের নাম লিখে খুঁজুন..." 
+                class="w-full bg-slate-800 border-none rounded-2xl py-3 pl-12 pr-4 outline-none text-sm text-white">
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        <button onclick="openModal()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg mb-8 active:scale-95 transition">➕ নতুন ওষুধ যোগ করুন</button>
+        <div id="medicineList" class="space-y-3"></div>
+    </div>
+
+    <!-- অ্যাড/এডিট মোডাল -->
+    <div id="medModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl modal-animation overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-6 border-b pb-2">
+                <h2 id="modalTitle" class="text-lg font-black text-slate-800">ওষুধের তথ্য</h2>
+                <button onclick="closeModal()" class="text-gray-400 text-2xl">&times;</button>
+            </div>
+            
+            <form id="medForm" class="space-y-4">
+                <input type="hidden" id="medId">
+                
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">বেসিক তথ্য</label>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <input type="text" id="medName" placeholder="ওষুধের নাম" required class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm font-bold focus:border-blue-500">
+                        <input type="text" id="medStrength" placeholder="স্ট্রেন্থ (500mg)" class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm font-bold focus:border-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="medGeneric" placeholder="জেনেরিক নাম" required class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm font-bold focus:border-blue-500">
+                        <input type="text" id="medGroup" placeholder="থেরাপেটিক গ্রুপ" class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm font-bold focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- গাইড তথ্য -->
+                <div class="space-y-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">স্মার্ট গাইড তথ্য</label>
+                    <input type="text" id="medIndication" placeholder="রোগের নাম (উদা: জ্বর, মাথা ব্যথা)" class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm">
+                    
+                    <!-- নতুন যোগ করা ফিল্ড: কীভাবে কাজ করে -->
+                    <textarea id="medMechanism" placeholder="ওষুধটি কীভাবে কাজ করে (Mechanism of Action)" class="w-full bg-blue-50 border-2 border-blue-100 rounded-xl p-3 outline-none text-sm h-20 font-medium"></textarea>
+                    
+                    <textarea id="medDosage" placeholder="সেবন বিধি (ডোজ)" class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm h-16"></textarea>
+                    <textarea id="medWarnings" placeholder="সতর্কতা ও নিষেধ (কাদের দেওয়া যাবে না)" class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm h-16"></textarea>
+                    <input type="text" id="medSideEffects" placeholder="পার্শ্বপ্রতিক্রিয়া (উদা: ঝিমুনি, বমি ভাব)" class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm">
+                </div>
+
+                <div class="col-span-2">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">স্টক (বক্স)</label>
+                    <input type="number" id="medStock" required class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none text-sm font-bold">
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100 grid grid-cols-2 gap-3">
+                    <p class="col-span-2 text-center text-[10px] font-black text-blue-600 uppercase border-b border-blue-200 pb-2 mb-1">প্রাইস ক্যাটাগরি (৳)</p>
+                    <div><input type="number" id="price1" required placeholder="C1" class="w-full border rounded-lg p-2 text-xs font-black text-center"></div>
+                    <div><input type="number" id="price2" required placeholder="C2" class="w-full border rounded-lg p-2 text-xs font-black text-center"></div>
+                    <div><input type="number" id="price3" required placeholder="C3" class="w-full border rounded-lg p-2 text-xs font-black text-center"></div>
+                    <div><input type="number" id="price4" required placeholder="C4" class="w-full border rounded-lg p-2 text-xs font-black text-center"></div>
+                </div>
+
+                <!-- বাটন এরিয়া -->
+                <div class="space-y-2 pt-4">
+                    <div class="flex gap-2">
+                        <button type="submit" id="saveBtn" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg active:scale-95 transition">ডাটা আপডেট করুন</button>
+                    </div>
+                    <div id="cloneArea" class="hidden flex gap-2">
+                        <button type="button" onclick="saveAsNew()" class="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg active:scale-95 transition">✨ নতুন স্ট্রেন্থ হিসেবে সেভ</button>
+                    </div>
+                    <button type="button" onclick="closeModal()" class="w-full bg-gray-100 text-gray-500 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest">বন্ধ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+        let allMeds = [];
+
+        async function loadMedicines() {
+            const q = query(collection(db, "medicines"), orderBy("name", "asc"));
+            const snap = await getDocs(q);
+            allMeds = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderMeds(allMeds);
+        }
+
+        function renderMeds(meds) {
+            const listDiv = document.getElementById('medicineList');
+            listDiv.innerHTML = meds.map(p => `
+                <div class="bg-white p-4 rounded-3xl shadow-sm border flex justify-between items-center transition active:scale-95">
+                    <div class="flex-1 pr-2">
+                        <h3 class="text-sm font-black text-slate-800">${p.name} <span class="text-blue-500 text-[10px]">${p.strength || ''}</span></h3>
+                        <p class="text-[9px] text-gray-400 font-bold uppercase truncate">${p.generic || 'Generic'} • <span class="text-indigo-400">${p.group || 'N/A'}</span></p>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1 mt-1">
+                            <span class="text-[9px] font-bold text-blue-500">C1: ৳${p.price1}</span>
+                            <span class="text-[9px] font-bold text-blue-500">C2: ৳${p.price2}</span>
+                            <span class="text-[9px] font-bold text-blue-500">C3: ৳${p.price3}</span>
+                            <span class="text-[9px] font-bold text-blue-500">C4: ৳${p.price4}</span>
+                        </div>
+                    </div>
+                    <button onclick="editMed('${p.id}')" class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">✏️</button>
+                </div>
+            `).join('');
+        }
+
+        window.openModal = () => { 
+            document.getElementById('medModal').classList.remove('hidden'); 
+            document.getElementById('medForm').reset(); 
+            document.getElementById('medId').value = ""; 
+            document.getElementById('modalTitle').innerText = "নতুন ওষুধ যোগ"; 
+            document.getElementById('saveBtn').innerText = "সেভ করুন";
+            document.getElementById('cloneArea').classList.add('hidden');
+        };
+
+        window.closeModal = () => document.getElementById('medModal').classList.add('hidden');
+
+        window.editMed = (id) => {
+            const m = allMeds.find(med => med.id === id);
+            document.getElementById('medId').value = m.id;
+            document.getElementById('medName').value = m.name;
+            document.getElementById('medStrength').value = m.strength || "";
+            document.getElementById('medGeneric').value = m.generic;
+            document.getElementById('medGroup').value = m.group || "";
+            document.getElementById('medIndication').value = m.indication || "";
+            
+            // এডিট করার সময় 'কীভাবে কাজ করে' তথ্যটি লোড করা
+            document.getElementById('medMechanism').value = m.mechanism || ""; 
+            
+            document.getElementById('medDosage').value = m.dosage || "";
+            document.getElementById('medWarnings').value = m.warnings || "";
+            document.getElementById('medSideEffects').value = m.sideEffects || "";
+            document.getElementById('medStock').value = m.stock;
+            document.getElementById('price1').value = m.price1;
+            document.getElementById('price2').value = m.price2;
+            document.getElementById('price3').value = m.price3;
+            document.getElementById('price4').value = m.price4;
+            
+            document.getElementById('modalTitle').innerText = "তথ্য আপডেট বা কপি করুন";
+            document.getElementById('saveBtn').innerText = "তথ্য আপডেট করুন";
+            document.getElementById('cloneArea').classList.remove('hidden');
+            document.getElementById('medModal').classList.remove('hidden');
+        };
+
+        document.getElementById('medForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('medId').value;
+            const data = getFormData();
+            
+            try {
+                if(id) {
+                    await updateDoc(doc(db, "medicines", id), data);
+                    alert("তথ্য আপডেট সফল হয়েছে!");
+                } else {
+                    await addDoc(collection(db, "medicines"), data);
+                    alert("নতুন ওষুধ যোগ হয়েছে!");
+                }
+                closeModal(); 
+                loadMedicines();
+            } catch (error) {
+                alert("ত্রুটি হয়েছে!");
+            }
+        });
+
+        window.saveAsNew = async () => {
+            const data = getFormData();
+            if(!data.strength) return alert("দয়া করে নতুন স্ট্রেন্থ বা এমজি লিখুন!");
+            
+            if(confirm(`আপনি কি "${data.name} ${data.strength}" কে নতুন ওষুধ হিসেবে সেভ করতে চান?`)) {
+                try {
+                    await addDoc(collection(db, "medicines"), data);
+                    alert("নতুন ওষুধ হিসেবে সেভ করা হয়েছে!");
+                    closeModal();
+                    loadMedicines();
+                } catch (e) {
+                    alert("সেভ করা যায়নি!");
+                }
+            }
+        };
+
+        function getFormData() {
+            return {
+                name: document.getElementById('medName').value,
+                strength: document.getElementById('medStrength').value,
+                generic: document.getElementById('medGeneric').value,
+                group: document.getElementById('medGroup').value,
+                indication: document.getElementById('medIndication').value,
+                
+                // তথ্য সংগ্রহ করা
+                mechanism: document.getElementById('medMechanism').value, 
+                
+                dosage: document.getElementById('medDosage').value,
+                warnings: document.getElementById('medWarnings').value,
+                sideEffects: document.getElementById('medSideEffects').value,
+                stock: Number(document.getElementById('medStock').value),
+                price1: Number(document.getElementById('price1').value),
+                price2: Number(document.getElementById('price2').value),
+                price3: Number(document.getElementById('price3').value),
+                price4: Number(document.getElementById('price4').value)
+            };
+        }
+
+        window.filterMeds = () => {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            renderMeds(allMeds.filter(m => 
+                m.name.toLowerCase().includes(term) || 
+                m.generic.toLowerCase().includes(term) ||
+                (m.group && m.group.toLowerCase().includes(term))
+            ));
+        };
+
+        loadMedicines();
+    </script>
+</body>
+</html>

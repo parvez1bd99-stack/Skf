@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>পেশেন্ট ফলো-আপ - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .filter-card { transition: all 0.3s; cursor: pointer; border: 2px solid transparent; }
+        .filter-active { border-color: inherit; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transform: translateY(-2px); }
+        .patient-card { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-bg { animation: fadeInBg 0.3s ease-out; }
+        @keyframes fadeInBg { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- হেডার -->
+    <nav class="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-lg mx-auto flex items-center gap-4">
+            <button onclick="history.back()" class="bg-white/10 p-2 rounded-lg text-xl">⬅</button>
+            <div>
+                <h1 class="text-lg font-black text-blue-400 leading-none">রিফিল রিমাইন্ডার</h1>
+                <p id="listStatus" class="text-[9px] font-bold text-blue-200 uppercase mt-1">স্মার্ট কাস্টমার ট্র্যাকিং</p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="p-4 max-w-lg mx-auto">
+        
+        <!-- ফিল্টার সেকশন -->
+        <div class="grid grid-cols-3 gap-2 mb-6">
+            <div onclick="filterBy('expired')" id="f-expired" class="filter-card bg-rose-50 p-3 rounded-2xl text-center border-rose-200 text-rose-600">
+                <p id="countExpired" class="text-xl font-black">0</p>
+                <p class="text-[8px] font-black uppercase">শেষ হয়েছে</p>
+            </div>
+            <div onclick="filterBy('today')" id="f-today" class="filter-card bg-amber-50 p-3 rounded-2xl text-center border-amber-200 text-amber-600">
+                <p id="countToday" class="text-xl font-black">0</p>
+                <p class="text-[8px] font-black uppercase">আজ/কাল শেষ</p>
+            </div>
+            <div onclick="filterBy('active')" id="f-active" class="filter-card bg-emerald-50 p-3 rounded-2xl text-center border-emerald-200 text-emerald-600">
+                <p id="countActive" class="text-xl font-black">0</p>
+                <p class="text-[8px] font-black uppercase">ওষুধ আছে</p>
+            </div>
+        </div>
+
+        <!-- সার্চ বার -->
+        <div class="mb-6">
+            <input type="text" id="searchInput" oninput="searchPatient()" placeholder="নাম বা ফোন দিয়ে খুঁজুন..." class="w-full bg-white border-none rounded-2xl py-4 px-6 shadow-sm outline-none text-sm font-bold text-slate-700">
+        </div>
+
+        <!-- পেশেন্ট লিস্ট -->
+        <div id="followupList" class="space-y-4">
+            <div class="p-20 text-center text-gray-300 italic text-xs font-bold">ডাটা লোড হচ্ছে...</div>
+        </div>
+    </main>
+
+    <!-- ওষুধ দেখার মোডাল -->
+    <div id="medModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[60] flex items-center justify-center p-6 modal-bg">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-black text-slate-800 uppercase italic">Last Purchase</h3>
+                <button onclick="closeMedModal()" class="bg-slate-100 p-2 rounded-full text-slate-400">&times;</button>
+            </div>
+            <div id="modalContent" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+                <!-- আইটেমগুলো এখানে আসবে -->
+            </div>
+            <button onclick="closeMedModal()" class="w-full mt-8 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-xs">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        let allPatients = [];
+        let currentFilter = 'all';
+
+        async function initFollowup() {
+            // patient_followups কালেকশন থেকে ডাটা রিড করা হচ্ছে
+            const snap = await getDocs(query(collection(db, "patient_followups"), orderBy("timestamp", "desc")));
+            allPatients = [];
+            
+            const today = new Date();
+            let counts = { expired: 0, today: 0, active: 0 };
+
+            snap.forEach(d => {
+                const p = d.data();
+                if (!p.entryDate) return;
+
+                // ১. মেয়াদ হিসাব
+                const startDate = p.entryDate.toDate();
+                const maxDays = p.daysSupplied;
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + maxDays);
+
+                const diffTime = endDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                // ২. স্ট্যাটাস নির্ধারণ
+                let status = "active";
+                if (diffDays < 0) { status = "expired"; counts.expired++; }
+                else if (diffDays <= 2) { status = "today"; counts.today++; }
+                else { counts.active++; }
+
+                allPatients.push({
+                    id: d.id,
+                    name: p.name,
+                    phone: p.phone,
+                    location: p.location,
+                    diffDays: diffDays,
+                    maxDays: maxDays,
+                    status: status,
+                    items: p.items || [],
+                    totalBill: p.totalBill || 0,
+                    purchaseDate: startDate.toLocaleDateString('bn-BD')
+                });
+            });
+
+            document.getElementById('countExpired').innerText = counts.expired;
+            document.getElementById('countToday').innerText = counts.today;
+            document.getElementById('countActive').innerText = counts.active;
+
+            renderList();
+        }
+
+        function renderList(filterTerm = '') {
+            const listDiv = document.getElementById('followupList');
+            listDiv.innerHTML = "";
+
+            let filtered = allPatients;
+            if(currentFilter !== 'all') filtered = filtered.filter(p => p.status === currentFilter);
+            if(filterTerm) {
+                filtered = filtered.filter(p => 
+                    p.name.toLowerCase().includes(filterTerm.toLowerCase()) || 
+                    p.phone.includes(filterTerm)
+                );
+            }
+
+            if(filtered.length === 0) {
+                listDiv.innerHTML = `<p class="text-center text-gray-400 py-10 italic">কোনো রেকর্ড পাওয়া যায়নি</p>`;
+                return;
+            }
+
+            filtered.forEach(p => {
+                let color = "border-emerald-500", bg = "bg-white", textColor="text-emerald-600";
+                let msg = `ওষুধ বাকি আছে: ${p.diffDays} দিন`;
+
+                if (p.status === "expired") {
+                    color = "border-rose-500"; bg = "bg-rose-50"; textColor="text-rose-600";
+                    msg = `ওষুধ শেষ হয়েছে ${Math.abs(p.diffDays)} দিন আগে`;
+                } else if (p.status === "today") {
+                    color = "border-amber-500"; bg = "bg-amber-50"; textColor="text-amber-600";
+                    msg = p.diffDays === 0 ? "আজই ওষুধ শেষ হবে" : "আগামীকাল ওষুধ শেষ হবে";
+                }
+
+                listDiv.innerHTML += `
+                    <div class="patient-card ${bg} p-6 rounded-[2.5rem] border-l-4 ${color} shadow-sm relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-md font-black text-slate-800 leading-none">${p.name}</h3>
+                                <p class="text-[10px] text-gray-400 font-bold mt-1.5 uppercase tracking-widest">${p.phone}</p>
+                            </div>
+                            <a href="tel:${p.phone}" class="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center border border-slate-100 text-2xl active:scale-90 transition">📞</a>
+                        </div>
+                        
+                        <div class="bg-white/60 p-4 rounded-3xl border border-white/50 mb-4 grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[8px] text-gray-400 font-black uppercase">লোকেশন</p>
+                                <p class="text-[11px] font-bold text-slate-600 truncate">${p.location}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[8px] text-gray-400 font-black uppercase">কেনা হয়েছিল</p>
+                                <p class="text-[11px] font-bold text-slate-600">${p.purchaseDate}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="text-[11px] font-black ${textColor} uppercase italic">${msg}</p>
+                                <p class="text-[9px] text-slate-400 font-bold mt-0.5">মোট বিল: ৳${p.totalBill}</p>
+                            </div>
+                            <button onclick="showMeds('${p.id}')" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition">ওষুধের তালিকা</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.filterBy = (type) => {
+            currentFilter = (currentFilter === type) ? 'all' : type;
+            document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('filter-active'));
+            if(currentFilter !== 'all') document.getElementById('f-' + type).classList.add('filter-active');
+            renderList();
+        }
+
+        window.searchPatient = () => renderList(document.getElementById('searchInput').value);
+
+        window.showMeds = (id) => {
+            const p = allPatients.find(x => x.id === id);
+            const content = document.getElementById('modalContent');
+            content.innerHTML = p.items.map(m => `
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p class="text-xs font-black text-slate-700">${m.name}</p>
+                    <p class="text-xs font-bold text-blue-600">${m.qty} পিস</p>
+                </div>
+            `).join('');
+            document.getElementById('medModal').classList.remove('hidden');
+        }
+
+        window.closeMedModal = () => document.getElementById('medModal').classList.add('hidden');
+
+        initFollowup();
+    </script>
+</body>
+</html>

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pharma POS Smart Cash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: sans-serif; background-color: #020617; color: white; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; margin: 0; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .bill-list-container { flex: 1; overflow-y: auto; background: #020617; }
+        .calc-btn { height: 46px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; border-radius: 10px; background: #1e293b; color: #f1f5f9; transition: 0.1s; border-bottom: 2px solid #0f172a; }
+        .calc-btn:active { background: #334155; transform: translateY(2px); border-bottom-width: 0; }
+        .input-active { border: 2px solid #3b82f6 !important; background: #0f172a !important; }
+        .row-item { border-bottom: 1px solid #1e293b; padding: 8px 12px; }
+        .disc-active { background: #be123c !important; color: white !important; border: 1px solid #fb7185; }
+        
+        /* কাস্টম ক্যাশ কিপ্যাড স্টাইল */
+        .cash-pad-btn { height: 50px; background: #334155; border-radius: 12px; font-weight: 800; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; }
+        .cash-pad-btn:active { background: #475569; transform: scale(0.95); }
+    </style>
+</head>
+<body>
+
+    <!-- হেডার -->
+    <div class="bg-slate-900 px-4 py-3 flex justify-between items-center border-b border-slate-700">
+        <div>
+            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest">Net Payable</div>
+            <div class="text-4xl font-black text-emerald-400 mono leading-none">৳<span id="grand-total">0</span></div>
+            <div id="discount-info" class="text-[10px] text-rose-500 font-bold mt-1 hidden">Discount: -৳<span id="disc-amount-text">0</span></div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="showCash()" class="bg-blue-600 px-6 py-2 rounded-xl text-xs font-bold uppercase shadow-lg shadow-blue-900/40">Cash</button>
+            <button onclick="location.reload()" class="bg-slate-800 px-3 py-2 rounded-xl text-xs font-bold">NEW</button>
+        </div>
+    </div>
+
+    <!-- আইটেম টেবিল হেডার -->
+    <div class="grid grid-cols-12 bg-slate-900 text-[9px] font-bold uppercase p-1.5 px-4 text-slate-600">
+        <div class="col-span-1">#</div>
+        <div class="col-span-6">Price & Qty</div>
+        <div class="col-span-3 text-right">Subtotal</div>
+        <div class="col-span-2 text-right">Del</div>
+    </div>
+
+    <!-- বিল লিস্ট -->
+    <div id="bill-list" class="bill-list-container"></div>
+
+    <!-- কন্ট্রোল প্যানেল -->
+    <div class="bg-slate-900 p-2 border-t border-slate-800">
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <div id="price-box" onclick="setActive('price')" class="input-active p-1.5 rounded-xl bg-slate-800 border-2 border-transparent text-center">
+                <span class="text-[9px] text-blue-400 block uppercase font-bold">Price</span>
+                <span class="text-lg font-bold mono" id="display-price">0</span>
+            </div>
+            <div id="qty-box" onclick="setActive('qty')" class="p-1.5 rounded-xl bg-slate-800 border-2 border-transparent text-center">
+                <span class="text-[9px] text-emerald-400 block uppercase font-bold">Qty</span>
+                <span class="text-lg font-bold mono" id="display-qty">1</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-4 gap-1.5">
+            <button onclick="applyGlobalDisc(5)" id="btn-5" class="disc-btn calc-btn !h-9 !text-[11px] bg-slate-800/50 text-slate-500">-5%</button>
+            <button onclick="applyGlobalDisc(7)" id="btn-7" class="disc-btn calc-btn !h-9 !text-[11px] bg-slate-800/50 text-slate-500">-7%</button>
+            <button onclick="applyGlobalDisc(10)" id="btn-10" class="disc-btn calc-btn !h-9 !text-[11px] bg-slate-800/50 text-slate-500">-10%</button>
+            <button onclick="applyGlobalDisc(15)" id="btn-15" class="disc-btn calc-btn !h-9 !text-[11px] bg-slate-800/50 text-slate-500">-15%</button>
+
+            <button onclick="press('7')" class="calc-btn">7</button>
+            <button onclick="press('8')" class="calc-btn">8</button>
+            <button onclick="press('9')" class="calc-btn">9</button>
+            <button onclick="clearEntry()" class="calc-btn text-rose-500 bg-slate-800">C</button>
+
+            <button onclick="press('4')" class="calc-btn">4</button>
+            <button onclick="press('5')" class="calc-btn">5</button>
+            <button onclick="press('6')" class="calc-btn">6</button>
+            <button onclick="addItem()" class="calc-btn row-span-3 !h-full bg-emerald-600 text-white !text-4xl shadow-lg shadow-emerald-900/30">⏎</button>
+
+            <button onclick="press('1')" class="calc-btn">1</button>
+            <button onclick="press('2')" class="calc-btn">2</button>
+            <button onclick="press('3')" class="calc-btn">3</button>
+
+            <button onclick="press('0')" class="calc-btn col-span-2">0</button>
+            <button onclick="press('.')" class="calc-btn">.</button>
+        </div>
+    </div>
+
+    <!-- স্মার্ট ক্যাশ মোডাল (কাস্টম কিপ্যাড সহ) -->
+    <div id="cash-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col justify-end">
+        <div class="bg-slate-900 w-full rounded-t-[2.5rem] p-6 border-t border-slate-700 shadow-2xl animate-slide-up">
+            
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Cash Settlement</h3>
+                <button onclick="closeCash()" class="text-slate-400 bg-slate-800 p-2 rounded-full px-4 text-xs">Close</button>
+            </div>
+
+            <!-- ডিসপ্লে এরিয়া -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-slate-800/50 p-3 rounded-2xl border border-slate-700">
+                    <span class="text-[10px] text-slate-500 block font-bold uppercase">Total Bill</span>
+                    <span class="text-2xl font-black text-white mono">৳<span id="cash-total-display">0</span></span>
+                </div>
+                <div class="bg-blue-600/10 p-3 rounded-2xl border border-blue-500/30">
+                    <span class="text-[10px] text-blue-500 block font-bold uppercase">Received</span>
+                    <span class="text-2xl font-black text-blue-400 mono">৳<span id="cash-received-display">0</span></span>
+                </div>
+            </div>
+
+            <!-- হিসাবের রেজাল্ট বক্স -->
+            <div id="result-box" class="text-center p-4 rounded-2xl border border-slate-800 bg-slate-800/20 mb-6">
+                <p id="change-label" class="text-[10px] font-bold uppercase mb-1 text-slate-500">অপেক্ষা করছে...</p>
+                <p class="text-5xl font-black mono" id="change-val">৳0</p>
+            </div>
+
+            <!-- কাস্টম ক্যাশ কিপ্যাড -->
+            <div class="grid grid-cols-4 gap-2 mb-6">
+                <!-- কুইক নোটস -->
+                <button onclick="setCashVal(100)" class="bg-slate-800 py-3 rounded-xl text-xs font-bold border border-slate-700">100</button>
+                <button onclick="setCashVal(500)" class="bg-slate-800 py-3 rounded-xl text-xs font-bold border border-slate-700">500</button>
+                <button onclick="setCashVal(1000)" class="bg-slate-800 py-3 rounded-xl text-xs font-bold border border-slate-700">1000</button>
+                <button onclick="clearCash()" class="bg-rose-900/30 text-rose-500 py-3 rounded-xl font-bold text-xs border border-rose-900/50">CLEAR</button>
+
+                <!-- নম্বর প্যাড -->
+                <button onclick="pressCashNum('7')" class="cash-pad-btn">7</button>
+                <button onclick="pressCashNum('8')" class="cash-pad-btn">8</button>
+                <button onclick="pressCashNum('9')" class="cash-pad-btn">9</button>
+                <button onclick="backspaceCash()" class="cash-pad-btn bg-slate-700 text-lg">⌫</button>
+
+                <button onclick="pressCashNum('4')" class="cash-pad-btn">4</button>
+                <button onclick="pressCashNum('5')" class="cash-pad-btn">5</button>
+                <button onclick="pressCashNum('6')" class="cash-pad-btn">6</button>
+                <button onclick="closeCash()" class="cash-pad-btn bg-emerald-600 row-span-2 !h-full text-base">DONE</button>
+
+                <button onclick="pressCashNum('1')" class="cash-pad-btn">1</button>
+                <button onclick="pressCashNum('2')" class="cash-pad-btn">2</button>
+                <button onclick="pressCashNum('3')" class="cash-pad-btn">3</button>
+
+                <button onclick="pressCashNum('0')" class="cash-pad-btn col-span-2">0</button>
+                <button onclick="pressCashNum('00')" class="cash-pad-btn">00</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let items = [];
+        let activeMode = 'price';
+        let currentPriceStr = "";
+        let currentQtyStr = "1";
+        let globalDiscountPct = 0;
+        let cashReceivedStr = "";
+
+        // মেইন কিপ্যাড ফাংশন
+        function setActive(mode) {
+            activeMode = mode;
+            document.getElementById('price-box').classList.toggle('input-active', mode === 'price');
+            document.getElementById('qty-box').classList.toggle('input-active', mode === 'qty');
+        }
+
+        function press(num) {
+            if (activeMode === 'price') {
+                if (num === '.' && currentPriceStr.includes('.')) return;
+                currentPriceStr += num;
+                document.getElementById('display-price').innerText = currentPriceStr;
+            } else {
+                if (num === '.') return;
+                if (currentQtyStr === "1") currentQtyStr = "";
+                currentQtyStr += num;
+                document.getElementById('display-qty').innerText = currentQtyStr || "1";
+            }
+        }
+
+        function clearEntry() {
+            if (activeMode === 'price') { currentPriceStr = ""; document.getElementById('display-price').innerText = "0"; }
+            else { currentQtyStr = "1"; document.getElementById('display-qty').innerText = "1"; }
+        }
+
+        function applyGlobalDisc(percent) {
+            if (items.length === 0) return;
+            globalDiscountPct = (globalDiscountPct === percent) ? 0 : percent;
+            render();
+        }
+
+        function addItem() {
+            const p = parseFloat(currentPriceStr);
+            if (!p) return;
+            const q = parseInt(currentQtyStr) || 1;
+            items.push({ id: Date.now(), p, q, t: p * q });
+            currentPriceStr = ""; currentQtyStr = "1";
+            document.getElementById('display-price').innerText = "0";
+            document.getElementById('display-qty').innerText = "1";
+            setActive('price');
+            render();
+        }
+
+        function render() {
+            let subtotal = 0;
+            document.getElementById('bill-list').innerHTML = items.map((i, idx) => {
+                subtotal += i.t;
+                return `
+                <div class="row-item grid grid-cols-12 items-center">
+                    <div class="col-span-1 text-[10px] text-slate-600 font-bold">${idx+1}</div>
+                    <div class="col-span-6">
+                        <div class="text-sm font-bold text-slate-200">৳${i.p.toFixed(2)} × ${i.q}</div>
+                    </div>
+                    <div class="col-span-3 text-right font-bold text-emerald-400 mono text-sm">৳${Math.round(i.t)}</div>
+                    <div class="col-span-2 text-right">
+                        <button onclick="removeItem(${i.id})" class="text-rose-900 font-bold px-2 text-xl">×</button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            let discAmount = (subtotal * globalDiscountPct) / 100;
+            let netTotal = Math.round(subtotal - discAmount);
+
+            if (globalDiscountPct > 0) {
+                document.getElementById('discount-info').classList.remove('hidden');
+                document.getElementById('disc-amount-text').innerText = Math.round(discAmount);
+            } else {
+                document.getElementById('discount-info').classList.add('hidden');
+            }
+
+            document.querySelectorAll('.disc-btn').forEach(btn => btn.classList.remove('disc-active'));
+            if (globalDiscountPct > 0) document.getElementById('btn-' + globalDiscountPct).classList.add('disc-active');
+
+            document.getElementById('grand-total').innerText = netTotal.toLocaleString();
+            const b = document.getElementById('bill-list'); b.scrollTop = b.scrollHeight;
+        }
+
+        function removeItem(id) {
+            items = items.filter(it => it.id !== id);
+            render();
+        }
+
+        // --- ক্যাশ কিপ্যাড লজিক (নতুন) ---
+
+        function showCash() {
+            const t = document.getElementById('grand-total').innerText.replace(/,/g, '');
+            if (t === "0") return;
+            document.getElementById('cash-total-display').innerText = t;
+            document.getElementById('cash-modal').classList.remove('hidden');
+            cashReceivedStr = "";
+            updateCashUI();
+        }
+
+        function pressCashNum(num) {
+            cashReceivedStr += num;
+            updateCashUI();
+        }
+
+        function backspaceCash() {
+            cashReceivedStr = cashReceivedStr.slice(0, -1);
+            updateCashUI();
+        }
+
+        function clearCash() {
+            cashReceivedStr = "";
+            updateCashUI();
+        }
+
+        function setCashVal(amt) {
+            cashReceivedStr = amt.toString();
+            updateCashUI();
+        }
+
+        function updateCashUI() {
+            const total = parseInt(document.getElementById('cash-total-display').innerText) || 0;
+            const received = parseInt(cashReceivedStr) || 0;
+            document.getElementById('cash-received-display').innerText = received.toLocaleString();
+            
+            const diff = received - total;
+            const resultBox = document.getElementById('result-box');
+            const changeLabel = document.getElementById('change-label');
+            const changeVal = document.getElementById('change-val');
+
+            if (!received) {
+                resultBox.className = "text-center p-4 rounded-2xl border border-slate-800 bg-slate-800/20";
+                changeLabel.innerText = "বাকি আছে (Due)";
+                changeVal.innerText = "৳" + total;
+                changeVal.className = "text-5xl font-black mono text-rose-500";
+            } else if (diff >= 0) {
+                resultBox.className = "text-center p-4 rounded-2xl border border-emerald-900/50 bg-emerald-500/10";
+                changeLabel.innerText = "ফেরত দিন (Return)";
+                changeVal.innerText = "৳" + diff;
+                changeVal.className = "text-5xl font-black mono text-emerald-400";
+            } else {
+                resultBox.className = "text-center p-4 rounded-2xl border border-rose-900/50 bg-rose-500/10";
+                changeLabel.innerText = "আরো পাবেন (Due)";
+                changeVal.innerText = "৳" + Math.abs(diff);
+                changeVal.className = "text-5xl font-black mono text-rose-400";
+            }
+        }
+
+        function closeCash() {
+            document.getElementById('cash-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ধামাকা অফার - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .progress-bar { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .offer-card { animation: fadeInUp 0.5s ease-out; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="pb-10">
+
+    <!-- হেডার -->
+    <div class="bg-indigo-900 text-white px-6 py-10 rounded-b-[3.5rem] shadow-2xl mb-8 relative overflow-hidden text-center">
+        <div class="relative z-10">
+            <button onclick="history.back()" class="absolute left-0 top-0 text-indigo-200 font-bold flex items-center gap-1">
+                ← <span class="text-[10px] uppercase">ফিরে যান</span>
+            </button>
+            <h1 class="text-3xl font-black italic tracking-tighter">মেগা ধামাকা অফার</h1>
+            <p class="text-indigo-300 text-[10px] font-bold uppercase tracking-widest mt-1">আপনার টার্গেট ও উপহার ট্র্যাকার</p>
+        </div>
+        <span class="absolute -right-10 -top-10 text-[12rem] opacity-10 rotate-12">🎁</span>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        
+        <!-- ১. বর্তমান প্রগ্রেস ট্র্যাকার -->
+        <div class="bg-white rounded-[2.5rem] p-8 shadow-xl mb-10 border border-indigo-50 text-center sm:text-left">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <div>
+                    <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none">এই মাসের মোট অর্ডার</p>
+                    <h2 id="currentMonthlyTotal" class="text-3xl font-black text-slate-800 mt-1">৳ ০</h2>
+                </div>
+                <div class="text-4xl bg-indigo-50 w-16 h-16 flex items-center justify-center rounded-2xl shadow-inner">🏆</div>
+            </div>
+
+            <!-- প্রগ্রেস বার -->
+            <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden mb-3 border border-slate-200 shadow-inner">
+                <div id="targetProgress" class="progress-bar bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full w-0"></div>
+            </div>
+            <p id="nextTargetText" class="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">টার্গেট হিসাব হচ্ছে...</p>
+        </div>
+
+        <!-- ২. উপহার প্যাকেজ লিস্ট -->
+        <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest mb-6 ml-2 border-l-4 border-indigo-600 pl-3">
+            উপহার প্যাকেজসমূহ
+        </h3>
+
+        <div id="offerList" class="space-y-6">
+            <div class="p-20 text-center">
+                <div class="animate-spin inline-block w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full mb-4"></div>
+                <p class="text-gray-300 italic text-xs">অফারগুলো লোড হচ্ছে...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const chemistId = urlParams.get('id');
+
+        async function init() {
+            if (!chemistId) return;
+
+            try {
+                // ১. এই মাসের মোট অর্ডার ক্যালকুলেট করা
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                
+                const qOrders = query(collection(db, "orders"), where("chemistId", "==", chemistId));
+                const orderSnap = await getDocs(qOrders);
+                let monthlyTotal = 0;
+
+                orderSnap.forEach(d => {
+                    const order = d.data();
+                    if (order.timestamp && order.timestamp.toDate() >= startOfMonth) {
+                        monthlyTotal += order.totalAmount;
+                    }
+                });
+
+                document.getElementById('currentMonthlyTotal').innerText = "৳ " + monthlyTotal.toLocaleString('bn-BD');
+
+                // ২. সব অফার প্যাকেজ লোড করা
+                const qOffers = query(collection(db, "offers"), orderBy("target", "asc"));
+                const offerSnap = await getDocs(qOffers);
+                let allOffers = [];
+
+                offerSnap.forEach(d => {
+                    allOffers.push({ id: d.id, ...d.data() });
+                });
+
+                if(allOffers.length === 0) {
+                    document.getElementById('offerList').innerHTML = `<p class="text-center text-gray-400 py-10 italic">বর্তমানে কোনো অফার প্যাকেজ নেই।</p>`;
+                    document.getElementById('nextTargetText').innerText = "নতুন অফারের জন্য অপেক্ষা করুন";
+                    return;
+                }
+
+                // ৩. প্রগ্রেস বার ও নেক্সট টার্গেট হিসাব
+                let nextOffer = allOffers.find(o => o.target > monthlyTotal);
+                let maxOffer = allOffers[allOffers.length - 1];
+                
+                let targetForBar = nextOffer ? nextOffer.target : maxOffer.target;
+                let percent = (monthlyTotal / targetForBar) * 100;
+                if(percent > 100) percent = 100;
+
+                document.getElementById('targetProgress').style.width = percent + "%";
+                
+                if(!nextOffer && monthlyTotal >= maxOffer.target) {
+                    document.getElementById('nextTargetText').innerText = "অভিনন্দন! আপনি সর্বোচ্চ প্যাকেজটি অর্জন করেছেন।";
+                } else {
+                    const remaining = targetForBar - monthlyTotal;
+                    document.getElementById('nextTargetText').innerText = `${nextOffer ? nextOffer.title : maxOffer.title} পেতে আর মাত্র ৳${remaining.toLocaleString('bn-BD')} অর্ডার করুন`;
+                }
+
+                // ৪. প্যাকেজ কার্ড রেন্ডার করা
+                const icons = ['🥈', '🥇', '💎', '🚀', '🎁', '🏆']; // র্যান্ডম আইকন
+                const colors = [
+                    'from-slate-400 to-slate-500', 
+                    'from-yellow-400 to-orange-500', 
+                    'from-blue-400 to-indigo-600',
+                    'from-emerald-400 to-teal-600',
+                    'from-rose-400 to-red-600'
+                ];
+
+                const list = document.getElementById('offerList');
+                list.innerHTML = allOffers.map((off, index) => {
+                    const isAchieved = monthlyTotal >= off.target;
+                    const icon = icons[index % icons.length];
+                    const color = colors[index % colors.length];
+
+                    return `
+                        <div class="offer-card relative bg-white rounded-[2.5rem] p-6 shadow-lg border-2 ${isAchieved ? 'border-emerald-500 bg-emerald-50/30' : 'border-white'}">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="w-12 h-12 bg-gradient-to-br ${color} rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-black/10">
+                                    ${icon}
+                                </div>
+                                ${isAchieved ? '<span class="bg-emerald-500 text-white text-[8px] px-3 py-1 rounded-full font-bold uppercase tracking-widest shadow-md">অর্জিত</span>' : ''}
+                            </div>
+                            
+                            <h4 class="text-lg font-black text-slate-800 leading-none">${off.title}</h4>
+                            <p class="text-[10px] text-indigo-600 font-bold uppercase mt-1 tracking-widest">টার্গেট: ৳ ${off.target.toLocaleString('bn-BD')}</p>
+                            
+                            <div class="mt-4 p-4 bg-slate-50/50 rounded-2xl border border-dashed border-indigo-200">
+                                <p class="text-[9px] text-gray-400 font-bold uppercase mb-1 tracking-tighter">উপহার বিবরণ:</p>
+                                <p class="text-[11px] font-bold text-slate-700 leading-relaxed">${off.reward}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (e) { 
+                console.error(e); 
+                document.getElementById('offerList').innerHTML = `<p class="text-center text-red-400 py-10">সার্ভার এরর! ইন্টারেনেট চেক করুন।</p>`;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

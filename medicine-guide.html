@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>স্মার্ট ফার্মা গাইড - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; }
+        .sticky-header { position: sticky; top: 0; z-index: 50; }
+        .med-card { transition: all 0.3s ease; }
+        .med-card:hover { transform: translateY(-2px); }
+        .search-shadow { box-shadow: 0 10px 25px -5px rgba(67, 56, 202, 0.2); }
+        
+        /* কাস্টম স্ক্রলবার */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 10px; }
+    </style>
+</head>
+<body class="pb-10">
+
+    <!-- ১. স্মার্ট হেডার (Sticky) -->
+    <div class="sticky-header bg-indigo-700 text-white pt-6 pb-8 px-4 rounded-b-[2.5rem] shadow-2xl mb-6">
+        <div class="max-w-md mx-auto">
+            <div class="flex justify-between items-center mb-5 px-2">
+                <button onclick="history.back()" class="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <div class="text-center">
+                    <h1 class="text-lg font-black tracking-tight uppercase">Smart Pharma Guide</h1>
+                    <p class="text-[9px] opacity-70 font-bold uppercase tracking-[0.2em]">Medical Reference</p>
+                </div>
+                <div class="w-10"></div>
+            </div>
+            
+            <!-- স্মার্ট সার্চ ইনপুট -->
+            <div class="relative max-w-sm mx-auto">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span class="text-gray-400">🔍</span>
+                </div>
+                <input type="text" id="guideSearch" oninput="searchGuide()" 
+                    placeholder="ওষুধ, রোগ বা গ্রুপ লিখে খুঁজুন..." 
+                    class="w-full bg-white border-none rounded-2xl py-4 pl-12 pr-4 outline-none text-sm text-slate-800 search-shadow focus:ring-2 ring-indigo-400 transition-all">
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        <div id="resultCount" class="px-2 mb-4">
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">প্রস্তাবিত ওষুধসমূহ</p>
+        </div>
+
+        <!-- ওষুধের তালিকা এরিয়া -->
+        <div id="guideList" class="space-y-5">
+            <div class="animate-pulse space-y-4">
+                <div class="h-32 bg-slate-200 rounded-[2rem]"></div>
+                <div class="h-32 bg-slate-200 rounded-[2rem]"></div>
+                <div class="h-32 bg-slate-200 rounded-[2rem]"></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        let allMedicines = [];
+
+        async function loadGuideData() {
+            try {
+                const snap = await getDocs(query(collection(db, "medicines"), orderBy("name", "asc")));
+                allMedicines = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderGuide(allMedicines.slice(0, 15));
+            } catch (error) {
+                console.error("Load Error:", error);
+                document.getElementById('guideList').innerHTML = `<div class="text-center py-10 text-red-500">ডাটা লোড করতে সমস্যা হয়েছে।</div>`;
+            }
+        }
+
+        function renderGuide(items) {
+            const list = document.getElementById('guideList');
+            list.innerHTML = "";
+
+            if(items.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center py-20">
+                        <span class="text-5xl block mb-4">💊</span>
+                        <p class="text-gray-400 italic text-sm">দুঃখিত, কোনো তথ্য পাওয়া যায়নি!</p>
+                    </div>`;
+                return;
+            }
+
+            items.forEach(med => {
+                list.innerHTML += `
+                    <div class="med-card bg-white rounded-[2rem] overflow-hidden shadow-sm border border-white">
+                        <div class="p-6 pb-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="text-xl font-black text-slate-800 leading-none">
+                                        ${med.name} <span class="text-indigo-600 text-sm ml-1">${med.strength || ''}</span>
+                                    </h3>
+                                    <p class="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter italic">
+                                        Group: ${med.group || 'N/A'}
+                                    </p>
+                                </div>
+                                <span class="bg-indigo-50 text-indigo-600 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-tighter">ওষুধের তথ্য</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 mt-2">
+                                <span class="text-[10px]">🧪</span>
+                                <p class="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">${med.generic || 'Generic Name'}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="px-6 pb-6 space-y-4">
+                            <!-- ব্যবহারের রোগের নাম -->
+                            <div class="flex gap-3 px-1">
+                                <div class="text-lg">📝</div>
+                                <div>
+                                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest">রোগের নাম / ব্যবহার</p>
+                                    <p class="text-sm font-bold text-slate-700 leading-tight">${med.indication || 'তথ্য নেই'}</p>
+                                </div>
+                            </div>
+
+                            <!-- ✨ নতুন কার্ড: কীভাবে কাজ করে (Mechanism) -->
+                            ${med.mechanism ? `
+                            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 shadow-sm">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs">🧬</span>
+                                    <p class="text-[9px] text-blue-700 font-black uppercase tracking-widest">ওষুধটি যেভাবে কাজ করে</p>
+                                </div>
+                                <p class="text-xs font-bold text-slate-600 leading-relaxed">${med.mechanism}</p>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- সেবন বিধি -->
+                            <div class="bg-amber-50/50 p-4 rounded-2xl border border-amber-100/50">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs">🥄</span>
+                                    <p class="text-[9px] text-amber-700 font-black uppercase tracking-widest">সেবন বিধি (ডোজ)</p>
+                                </div>
+                                <p class="text-xs font-bold text-slate-600 leading-relaxed">${med.dosage || 'চিকিৎসকের পরামর্শ নিন'}</p>
+                            </div>
+
+                            <!-- সতর্কতা ও পার্শ্বপ্রতিক্রিয়া -->
+                            <div class="grid grid-cols-2 gap-3">
+                                ${med.warnings ? `
+                                <div class="bg-rose-50 p-3 rounded-2xl">
+                                    <p class="text-[8px] text-rose-600 font-black uppercase mb-1">⚠️ সতর্কতা</p>
+                                    <p class="text-[10px] font-bold text-rose-800 leading-tight">${med.warnings}</p>
+                                </div>
+                                ` : ''}
+                                
+                                ${med.sideEffects ? `
+                                <div class="bg-slate-100 p-3 rounded-2xl">
+                                    <p class="text-[8px] text-slate-500 font-black uppercase mb-1">✨ পার্শ্বপ্রতিক্রিয়া</p>
+                                    <p class="text-[10px] font-bold text-slate-600 leading-tight">${med.sideEffects}</p>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.searchGuide = () => {
+            const term = document.getElementById('guideSearch').value.toLowerCase();
+            const countLabel = document.getElementById('resultCount');
+            
+            if(term.length === 0) {
+                countLabel.innerHTML = `<p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">প্রস্তাবিত ওষুধসমূহ</p>`;
+                renderGuide(allMedicines.slice(0, 15));
+                return;
+            }
+
+            const filtered = allMedicines.filter(m => 
+                m.name.toLowerCase().includes(term) || 
+                (m.generic && m.generic.toLowerCase().includes(term)) || 
+                (m.indication && m.indication.toLowerCase().includes(term)) ||
+                (m.mechanism && m.mechanism.toLowerCase().includes(term)) || // মেকানিজম দিয়েও সার্চ হবে
+                (m.group && m.group.toLowerCase().includes(term)) ||
+                (m.strength && m.strength.toLowerCase().includes(term))
+            );
+
+            countLabel.innerHTML = `<p class="text-[10px] text-indigo-500 font-bold uppercase tracking-widest">অনুসন্ধানের ফলাফল: ${filtered.length}টি পাওয়া গেছে</p>`;
+            renderGuide(filtered);
+        };
+
+        loadGuideData();
+    </script>
+</body>
+</html>

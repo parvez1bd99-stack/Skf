@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>স্মার্ট ডক্টর ডিরেক্টরি ও রিলেশনশিপ ম্যানেজার</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; }
+        .active-chamber { border-left: 5px solid #3b82f6; background-color: #eff6ff; }
+        .visited { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+        .modal-up { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .filter-btn-active { background-color: #2563eb !important; color: white !important; }
+        .insight-card { background: linear-gradient(135deg, #fffbeb 0%, #fff 100%); border-left: 4px solid #f59e0b; }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- হেডার -->
+    <nav class="bg-slate-900 text-white p-5 sticky top-0 z-50 shadow-xl flex justify-between items-center">
+        <div>
+            <h1 class="text-lg font-black text-blue-400 leading-none uppercase tracking-tighter">DRM Planner</h1>
+            <p id="todayInfo" class="text-[9px] font-bold text-slate-400 mt-1 uppercase"></p>
+        </div>
+        <button onclick="openScheduleModal()" class="bg-blue-600 w-10 h-10 rounded-full flex items-center justify-center text-2xl shadow-lg">＋</button>
+    </nav>
+
+    <main class="p-4 max-w-md mx-auto">
+        
+        <!-- স্মার্ট ফিল্টার বক্স -->
+        <div class="bg-white p-5 rounded-[2.5rem] shadow-sm mb-6 space-y-4 border border-slate-200">
+            <div class="flex items-center gap-3">
+                <span class="text-xl">📍</span>
+                <select id="locationFilter" onchange="renderDirectory()" class="flex-1 bg-slate-50 border-none rounded-xl px-3 py-3 text-xs font-bold outline-none text-slate-700">
+                    <option value="all">সব এলাকা (All Locations)</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="setTimeFilter('morning')" id="btnMorning" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase bg-slate-50 text-slate-400 border border-slate-100">সকাল</button>
+                <button onclick="setTimeFilter('evening')" id="btnEvening" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase bg-slate-50 text-slate-400 border border-slate-100">বিকাল/রাত</button>
+                <button onclick="setTimeFilter('all')" id="btnAllTime" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase filter-btn-active">সব সময়</button>
+            </div>
+        </div>
+
+        <p id="resultCount" class="text-[10px] font-black text-slate-400 uppercase mb-4 ml-2 tracking-widest"></p>
+
+        <!-- ডক্টর লিস্ট -->
+        <div id="directoryList" class="space-y-6">
+            <div class="p-20 text-center text-slate-300 italic text-xs">ডাটা লোড হচ্ছে...</div>
+        </div>
+    </main>
+
+    <!-- শিডিউল ও নিউ ডক্টর মডাল -->
+    <div id="scheduleModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[60] flex items-end justify-center">
+        <div class="bg-white w-full max-w-md rounded-t-[3rem] p-8 modal-up shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-black text-slate-800 uppercase italic">Add Slot / Doctor</h3>
+                <button onclick="closeModal()" class="bg-slate-100 p-2 rounded-full text-slate-400">&times;</button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex gap-2">
+                    <select id="doctorSelect" class="flex-1 bg-slate-50 border-none rounded-2xl p-4 font-bold text-sm outline-none">
+                        <option value="">ডাক্তার সিলেক্ট করুন</option>
+                    </select>
+                    <button onclick="toggleNewDocForm()" class="bg-slate-800 text-white px-4 rounded-2xl text-xs font-bold">New +</button>
+                </div>
+
+                <!-- নতুন ডাক্তার ফরম (Hidden by default) -->
+                <div id="newDocForm" class="hidden bg-blue-50 p-4 rounded-2xl space-y-3 border border-blue-100">
+                    <input type="text" id="newDocName" placeholder="ডাক্তারের সম্পূর্ণ নাম" class="w-full bg-white p-3 rounded-xl text-sm font-bold outline-none border border-blue-200">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="newDocDegree" placeholder="ডিগ্রি" class="w-full bg-white p-3 rounded-xl text-xs font-bold outline-none border border-blue-200">
+                        <input type="tel" id="newDocPhone" placeholder="ফোন নম্বর" class="w-full bg-white p-3 rounded-xl text-xs font-bold outline-none border border-blue-200">
+                    </div>
+                </div>
+
+                <input type="text" id="chamberName" placeholder="চেম্বারের নাম" class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none border border-slate-100">
+                <input type="text" id="location" placeholder="এলাকা (যেমন: উত্তরা)" class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none border border-slate-100">
+                <input type="text" id="days" placeholder="বার (যেমন: শনি, সোম)" class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none border border-slate-100">
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <select id="shiftSelect" class="bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none"><option value="morning">সকাল</option><option value="evening">বিকাল/রাত</option></select>
+                    <input type="text" id="time" placeholder="৫টা - ৯টা" class="bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none">
+                </div>
+
+                <button onclick="saveEverything()" id="saveBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl">সব সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- রিলেশনশিপ নোট মডাল -->
+    <div id="noteModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl">
+            <h3 class="text-md font-black text-slate-800 mb-4 uppercase">ব্যক্তিগত নোট যোগ করুন</h3>
+            <input type="hidden" id="noteDocId">
+            <input type="text" id="noteTitle" placeholder="টাইটেল (উদা: গিফট চয়েস)" class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none mb-3">
+            <textarea id="noteDesc" placeholder="বিস্তারিত লিখুন..." class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-medium h-32 outline-none mb-4"></textarea>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('noteModal').classList.add('hidden')" class="flex-1 bg-slate-100 text-slate-400 py-3 rounded-xl font-bold text-xs">বাতিল</button>
+                <button onclick="saveNote()" class="flex-2 bg-amber-500 text-white py-3 px-6 rounded-xl font-bold text-xs uppercase">নোট সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, getDocs, addDoc, doc, query, orderBy, setDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        let allDoctors = [];
+        let visitedIds = [];
+        let selectedTime = 'all';
+        const dayMap = { 0: "রবি", 1: "সোম", 2: "মঙ্গল", 3: "বুধ", 4: "বৃহস্পতি", 5: "শুক্র", 6: "শনি" };
+        const todayShortDay = dayMap[new Date().getDay()];
+
+        async function init() {
+            document.getElementById('todayInfo').innerText = `${new Date().toLocaleDateString('bn-BD')} | ${todayShortDay}বার`;
+            const dSnap = await getDocs(query(collection(db, "doctors"), orderBy("name", "asc")));
+            allDoctors = dSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            const select = document.getElementById('doctorSelect');
+            const locFilter = document.getElementById('locationFilter');
+            const uniqueLocations = new Set();
+            select.innerHTML = '<option value="">ডাক্তার সিলেক্ট করুন</option>';
+
+            allDoctors.forEach(doc => {
+                const opt = document.createElement('option');
+                opt.value = doc.id; opt.innerText = doc.name;
+                select.appendChild(opt);
+                (doc.schedules || []).forEach(s => uniqueLocations.add(s.location));
+            });
+
+            uniqueLocations.forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc; opt.innerText = loc;
+                locFilter.appendChild(opt);
+            });
+
+            await loadVisits();
+            renderDirectory();
+        }
+
+        async function loadVisits() {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            const vSnap = await getDocs(collection(db, "daily_visits"));
+            visitedIds = [];
+            vSnap.forEach(v => { if(v.id.includes(todayStr)) visitedIds.push(v.data().docId); });
+        }
+
+        window.renderDirectory = () => {
+            const listDiv = document.getElementById('directoryList');
+            const locVal = document.getElementById('locationFilter').value;
+            listDiv.innerHTML = "";
+            let count = 0;
+
+            allDoctors.forEach(doctor => {
+                const schedules = doctor.schedules || [];
+                const notes = doctor.insights || [];
+                const isVisited = visitedIds.includes(doctor.id);
+
+                const filteredSchedules = schedules.filter(s => {
+                    const matchDay = s.days.includes(todayShortDay);
+                    const matchLoc = (locVal === 'all' || locVal === "") || s.location === locVal;
+                    const matchTime = (selectedTime === 'all') || (s.shift === selectedTime);
+                    return matchDay && matchLoc && matchTime;
+                });
+
+                if(filteredSchedules.length === 0) return;
+                count++;
+
+                listDiv.innerHTML += `
+                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-white overflow-hidden mb-6 ${isVisited ? 'visited' : ''}">
+                        <div class="p-6 bg-slate-50 flex justify-between items-center border-b">
+                            <div>
+                                <h2 class="text-sm font-black text-slate-800 leading-none">${doctor.name}</h2>
+                                <p class="text-[9px] text-blue-600 font-bold uppercase mt-1">${doctor.degree}</p>
+                            </div>
+                            <button onclick="markVisit('${doctor.id}')" class="${isVisited ? 'bg-emerald-500' : 'bg-slate-800'} text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase">
+                                ${isVisited ? '✓ Visited' : 'Mark Visit'}
+                            </button>
+                        </div>
+
+                        <!-- শিডিউল সেকশন -->
+                        <div class="p-4 space-y-3">
+                            ${filteredSchedules.map(s => `
+                                <div class="p-4 rounded-2xl bg-white border border-slate-100 active-chamber">
+                                    <div class="flex justify-between items-start">
+                                        <span class="text-[8px] font-black uppercase text-blue-500">Scheduled Now</span>
+                                        <span class="text-[9px] font-bold text-slate-400">${s.days}</span>
+                                    </div>
+                                    <h4 class="text-xs font-black text-slate-700 mt-1">${s.chamberName}</h4>
+                                    <p class="text-[10px] text-indigo-600 font-black">⏰ ${s.time}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- রিলেশনশিপ ইনসাইট সেকশন -->
+                        <div class="px-6 pb-6">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Personal Insights (CRM)</h4>
+                                <button onclick="openNoteModal('${doctor.id}')" class="text-[18px] text-amber-400">📝</button>
+                            </div>
+                            <div class="space-y-2">
+                                ${notes.map((n, i) => `
+                                    <div class="insight-card p-3 rounded-xl relative group">
+                                        <button onclick="deleteNote('${doctor.id}', ${i})" class="absolute top-1 right-2 text-rose-300 text-xs">&times;</button>
+                                        <h5 class="text-[10px] font-black text-amber-700 uppercase leading-none">${n.title}</h5>
+                                        <p class="text-[11px] text-slate-600 font-medium mt-1">${n.desc}</p>
+                                    </div>
+                                `).join('')}
+                                ${notes.length === 0 ? '<p class="text-[9px] text-slate-300 italic">কোনো ব্যক্তিগত নোট নেই।</p>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('resultCount').innerText = `${count} জন ডাক্তার পাওয়া গেছে`;
+        }
+
+        window.saveEverything = async () => {
+            const docId = document.getElementById('doctorSelect').value;
+            const newDocName = document.getElementById('newDocName').value.trim();
+            const btn = document.getElementById('saveBtn');
+            let targetDocId = docId;
+
+            btn.disabled = true; btn.innerText = "প্রসেসিং...";
+
+            try {
+                // ১. যদি নতুন ডাক্তার এন্ট্রি করতে হয়
+                if(!docId && newDocName) {
+                    const newDocRef = await addDoc(collection(db, "doctors"), {
+                        name: newDocName,
+                        degree: document.getElementById('newDocDegree').value,
+                        phone: document.getElementById('newDocPhone').value,
+                        honorarium: 20,
+                        timestamp: serverTimestamp()
+                    });
+                    targetDocId = newDocRef.id;
+                }
+
+                // ২. শিডিউল স্লট এন্ট্রি
+                const slot = {
+                    chamberName: document.getElementById('chamberName').value,
+                    location: document.getElementById('location').value,
+                    days: document.getElementById('days').value,
+                    shift: document.getElementById('shiftSelect').value,
+                    time: document.getElementById('time').value
+                };
+
+                if(targetDocId && slot.chamberName) {
+                    await updateDoc(doc(db, "doctors", targetDocId), { schedules: arrayUnion(slot) });
+                    alert("সফলভাবে সংরক্ষিত হয়েছে!");
+                    location.reload();
+                } else { alert("তথ্য অসম্পূর্ণ!"); btn.disabled = false; }
+            } catch (e) { alert("Error!"); btn.disabled = false; }
+        }
+
+        window.openNoteModal = (id) => { document.getElementById('noteDocId').value = id; document.getElementById('noteModal').classList.remove('hidden'); }
+        
+        window.saveNote = async () => {
+            const id = document.getElementById('noteDocId').value;
+            const note = { title: document.getElementById('noteTitle').value, desc: document.getElementById('noteDesc').value };
+            if(!note.title) return;
+            await updateDoc(doc(db, "doctors", id), { insights: arrayUnion(note) });
+            alert("নোট সেভ হয়েছে!");
+            location.reload();
+        }
+
+        window.deleteNote = async (docId, idx) => {
+            if(!confirm("নোটটি কি মুছে ফেলবেন?")) return;
+            const doctor = allDoctors.find(d => d.id === docId);
+            const noteToRemove = doctor.insights[idx];
+            await updateDoc(doc(db, "doctors", docId), { insights: arrayRemove(noteToRemove) });
+            location.reload();
+        }
+
+        window.toggleNewDocForm = () => document.getElementById('newDocForm').classList.toggle('hidden');
+        window.setTimeFilter = (shift) => { selectedTime = shift; renderDirectory(); }
+        window.openScheduleModal = () => document.getElementById('scheduleModal').classList.remove('hidden');
+        window.closeModal = () => document.getElementById('scheduleModal').classList.add('hidden');
+        window.markVisit = async (docId) => {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            await setDoc(doc(db, "daily_visits", `${todayStr}_${docId}`), { docId, date: todayStr, timestamp: new Date() });
+            location.reload();
+        }
+
+        init();
+    </script>
+</body>
+</html>

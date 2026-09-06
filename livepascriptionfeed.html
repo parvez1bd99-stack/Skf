@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>লাইভ প্রেসক্রিপশন ফিড - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f0f4f8; }
+        .feed-card { animation: slideIn 0.4s ease-out forwards; }
+        @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    </style>
+</head>
+<body class="pb-10">
+
+    <!-- হেডার -->
+    <nav class="bg-slate-900 text-white p-5 sticky top-0 z-50 shadow-2xl">
+        <div class="max-w-lg mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button onclick="history.back()" class="text-blue-400 font-bold">←</button>
+                <div>
+                    <h1 class="text-lg font-black text-blue-400 leading-none">Live Leads</h1>
+                    <p id="totalLeads" class="text-[9px] font-bold text-blue-200 uppercase tracking-widest mt-1">০টি প্রেসক্রিপশন পাওয়া গেছে</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a href="medicine-guide.html" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase">Guide</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="p-4 max-w-lg mx-auto">
+        <!-- কুইক সার্চ টুল -->
+        <div class="mb-6">
+            <input type="text" id="leadSearch" oninput="filterLeads()" placeholder="রোগী বা ওষুধের নাম লিখে খুঁজুন..." 
+                class="w-full bg-white border-2 border-blue-100 rounded-2xl p-4 text-sm font-bold outline-none focus:border-blue-500 shadow-sm">
+        </div>
+
+        <!-- লাইভ ফিড কন্টেইনার -->
+        <div id="feedList" class="space-y-4">
+            <div class="p-20 text-center">
+                <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                <p class="text-gray-400 italic text-xs">নতুন লিড চেক করা হচ্ছে...</p>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+
+        let allLeads = [];
+
+        // ১. রিয়েল-টাইম লিসেনার (নতুন প্রেসক্রিপশন আসলে অটো আপডেট হবে)
+        const q = query(collection(db, "prescriptions"), orderBy("timestamp", "desc"));
+
+        onSnapshot(q, (snapshot) => {
+            const list = document.getElementById('feedList');
+            document.getElementById('totalLeads').innerText = `${snapshot.size}টি প্রেসক্রিপশন পাওয়া গেছে`;
+            
+            if (snapshot.empty) {
+                list.innerHTML = `<div class="p-20 text-center text-gray-400 italic text-xs">এখনো কোনো ডিজিটাল প্রেসক্রিপশন তৈরি হয়নি।</div>`;
+                return;
+            }
+
+            allLeads = [];
+            list.innerHTML = "";
+            
+            snapshot.forEach(d => {
+                const p = d.data();
+                allLeads.push({ id: d.id, ...p });
+                renderLeadCard(d.id, p);
+            });
+        });
+
+        // ২. লিড কার্ড রেন্ডার করা
+        function renderLeadCard(id, p) {
+            const list = document.getElementById('feedList');
+            const time = p.timestamp ? p.timestamp.toDate().toLocaleTimeString('bn-BD') : "Just Now";
+            const date = p.timestamp ? p.timestamp.toDate().toLocaleDateString('bn-BD') : "";
+            
+            let statusColor = "bg-orange-500";
+            let statusText = "New Lead";
+            
+            if(p.status === "Ordered") {
+                statusColor = "bg-emerald-500";
+                statusText = "Converted";
+            } else if(p.status === "Cancelled") {
+                statusColor = "bg-rose-500";
+                statusText = "Cancelled";
+            }
+
+            const cardHTML = `
+                <div class="feed-card bg-white rounded-[2.5rem] p-6 shadow-sm border border-white">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-2xl">👤</div>
+                            <div>
+                                <h3 class="text-lg font-black text-slate-800 leading-none">${p.patientName}</h3>
+                                <p class="text-[10px] text-gray-400 font-bold mt-1 uppercase">${date} | ${time}</p>
+                            </div>
+                        </div>
+                        <span class="text-[8px] text-white font-black px-2 py-1 rounded-full ${statusColor} uppercase">${statusText}</span>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-3xl mb-4 border border-slate-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest">ডাক্তার: ${p.doctorName}</p>
+                        </div>
+                        <div class="space-y-2">
+                            ${p.medicines.map(m => `
+                                <div class="flex justify-between text-xs font-bold border-b border-white pb-1">
+                                    <span class="text-slate-700">💊 ${m.name}</span>
+                                    <span class="text-blue-500">${m.dose}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <!-- রোগীর নম্বর যদি ডাটাবেজে থাকে তবে এখানে কল বাটন কাজ করবে -->
+                        <button onclick="alert('রোগীর মোবাইল নম্বর সংগ্রহ করে কল দিন')" class="flex-1 bg-blue-600 text-white py-3.5 rounded-2xl text-center font-black uppercase text-[11px] shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
+                            📞 যোগাযোগ করুন
+                        </button>
+                        <button onclick="updateLeadStatus('${id}', 'Ordered')" class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center text-xl shadow-inner">✅</button>
+                    </div>
+                </div>
+            `;
+            list.insertAdjacentHTML('beforeend', cardHTML);
+        }
+
+        // ৩. স্ট্যাটাস আপডেট করা
+        window.updateLeadStatus = async (id, status) => {
+            if(confirm("অর্ডারটি কি কনফার্ম (Converted) করা হয়েছে?")) {
+                try {
+                    await updateDoc(doc(db, "prescriptions", id), { status: status });
+                } catch (e) {
+                    alert("Error updating status!");
+                }
+            }
+        }
+
+        // ৪. ফিল্টার ফাংশন
+        window.filterLeads = () => {
+            const term = document.getElementById('leadSearch').value.toLowerCase();
+            const list = document.getElementById('feedList');
+            list.innerHTML = "";
+            
+            const filtered = allLeads.filter(l => 
+                l.patientName.toLowerCase().includes(term) || 
+                l.doctorName.toLowerCase().includes(term) ||
+                l.medicines.some(m => m.name.toLowerCase().includes(term))
+            );
+            
+            filtered.forEach(l => renderLeadCard(l.id, l));
+        };
+    </script>
+</body>
+</html>

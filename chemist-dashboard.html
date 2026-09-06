@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartConnect - ফার্মেসি ড্যাশবোর্ড</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .order-card { transition: all 0.2s; }
+        .order-card:active { transform: scale(0.98); }
+        .offer-glow { animation: glow 2s infinite; }
+        @keyframes glow { 0% { box-shadow: 0 0 5px #f59e0b; } 50% { box-shadow: 0 0 15px #ef4444; } 100% { box-shadow: 0 0 5px #f59e0b; } }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .notice-slide { animation: slideDown 0.4s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="p-3 pb-20">
+
+    <div class="max-w-md mx-auto">
+        <!-- ১. ব্র্যান্ডিং ও প্রোফাইল কার্ড -->
+        <div class="bg-gradient-to-br from-blue-700 to-indigo-900 rounded-[2rem] p-5 shadow-lg mb-3 text-white">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h1 class="text-xl font-black italic tracking-tighter uppercase leading-none">SmartConnect</h1>
+                    <p class="text-[8px] opacity-70 font-bold uppercase tracking-widest">Pharmacy Digital Profile</p>
+                </div>
+                <div class="bg-white/20 px-3 py-1 rounded-full border border-white/30">
+                    <p id="priceCat" class="text-[10px] font-black uppercase">CAT-১</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-2xl border border-white/20">🏪</div>
+                <div class="flex-1">
+                    <h2 id="chemistName" class="text-lg font-bold leading-tight">লোড হচ্ছে...</h2>
+                    <p id="ownerName" class="text-[10px] opacity-80 font-medium">মালিক: ---</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-white/10">
+                <div class="bg-white/5 p-2 rounded-xl">
+                    <p class="text-[8px] uppercase opacity-70 mb-0.5 text-center">মাসের মোট অর্ডার</p>
+                    <h3 id="monthlyOrders" class="text-sm font-black text-center">৳ ০</h3>
+                </div>
+                <div class="bg-white/5 p-2 rounded-xl flex flex-col justify-center">
+                    <p id="addressDisp" class="text-[9px] text-center leading-tight opacity-90 line-clamp-2 italic">ঠিকানা: লোড হচ্ছে...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ২. এমএসও মেসেজ বা নোটিশ বার (স্লিম ডিজাইন) -->
+        <div id="msoMessageBox" class="hidden notice-slide bg-indigo-600 text-white p-3 rounded-2xl mb-4 shadow-md relative flex items-center gap-3">
+            <span class="text-xl">📢</span>
+            <div class="flex-1 overflow-hidden">
+                <p class="text-[8px] font-black uppercase opacity-60 leading-none">MSO Message</p>
+                <p id="msoMsgDisplay" class="text-[11px] font-bold leading-tight mt-0.5 truncate italic">বার্তাটুকু এখানে আসবে...</p>
+            </div>
+            <button onclick="document.getElementById('msoMessageBox').remove()" class="bg-white/20 w-6 h-6 rounded-full flex items-center justify-center text-xs">&times;</button>
+        </div>
+
+        <!-- ৩. ধামাকা অফার লিঙ্কর -->
+        <a id="offerLink" href="#" class="offer-glow block bg-gradient-to-r from-orange-500 to-red-600 px-4 py-3 rounded-2xl shadow-md mb-4 text-white relative overflow-hidden group">
+            <div class="flex items-center justify-between relative z-10">
+                <div>
+                    <p class="text-[9px] font-black uppercase tracking-tighter animate-pulse">🔥 মেগা ধামাকা অফার</p>
+                    <h3 class="text-xs font-bold leading-none mt-1">উপহার ও ক্যাশব্যাক প্যাকেজ দেখুন</h3>
+                </div>
+                <span class="text-2xl">🎁</span>
+            </div>
+        </a>
+
+        <!-- ৪. কুইক অ্যাকশন বাটনসমূহ -->
+        <div class="grid grid-cols-3 gap-3 mb-5">
+            <a id="orderBtnLink" href="#" class="bg-emerald-500 p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-white active:scale-95 transition">
+                <span class="text-xl mb-1">🛒</span>
+                <span class="text-[9px] font-black uppercase">অর্ডার</span>
+            </a>
+            <a href="smart-calculator.html" class="bg-slate-700 p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-white active:scale-95 transition">
+                <span class="text-xl mb-1">🧮</span>
+                <span class="text-[9px] font-black uppercase">হিসাব</span>
+            </a>
+            <a href="medicine-guide.html" class="bg-indigo-500 p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-white active:scale-95 transition">
+                <span class="text-xl mb-1">📚</span>
+                <span class="text-[9px] font-black uppercase text-center">গাইড</span>
+            </a>
+        </div>
+
+        <!-- ৫. সাম্প্রতিক অর্ডার হিস্ট্রি -->
+        <div class="flex items-center justify-between mb-2 px-1">
+            <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">সাম্প্রতিক অর্ডারসমূহ</h3>
+        </div>
+        <div id="orderHistory" class="space-y-2 mb-6">
+            <div class="p-6 text-center text-gray-400 italic text-xs">লোড হচ্ছে...</div>
+        </div>
+
+        <!-- ৬. অভিযোগ বক্স -->
+        <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100 mb-6">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="text-lg">📩</span>
+                <h3 class="text-[11px] font-black text-slate-800 uppercase tracking-wider">অভিযোগ বা পরামর্শ</h3>
+            </div>
+            <div class="flex gap-2">
+                <input id="complaintText" type="text" placeholder="এখানে লিখুন..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500">
+                <button onclick="submitComplaint()" id="complaintBtn" class="bg-slate-800 text-white px-4 py-2 rounded-xl font-bold uppercase text-[9px] shadow-md active:scale-95 transition">পাঠান</button>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="qr-scanner.html" class="text-gray-400 underline text-[9px] font-bold uppercase tracking-widest opacity-60">নতুন কার্ড স্ক্যান করুন</a>
+        </div>
+    </div>
+
+    <!-- ৭. অর্ডার ডিটেইলস মোডাল (Popup) -->
+    <div id="orderModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 transition-opacity duration-300">
+        <div class="modal-content bg-white w-full max-w-md rounded-t-[2rem] p-6 shadow-2xl flex flex-col max-h-[80vh] translate-y-full transition-transform duration-300">
+            <div class="flex justify-between items-start mb-4">
+                <div><h2 class="text-lg font-black text-slate-800 leading-none" id="modalOrderId">বিবরণ</h2><p id="modalOrderDate" class="text-[9px] text-gray-400 font-bold uppercase mt-1"></p></div>
+                <button onclick="closeModal()" class="text-gray-300 text-3xl font-light leading-none">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                <table class="w-full text-left">
+                    <thead class="text-[9px] font-bold text-gray-400 uppercase border-b border-gray-50">
+                        <tr><th class="py-2">ওষুধ</th><th class="py-2 text-center">পরিমাণ</th><th class="py-2 text-right">মূল্য</th></tr>
+                    </thead>
+                    <tbody id="modalItemsBody" class="divide-y divide-gray-50"></tbody>
+                </table>
+            </div>
+            <div class="mt-4 pt-4 border-t flex justify-between items-center">
+                <h4 id="modalTotalBill" class="text-xl font-black text-blue-600">৳ ০</h4>
+                <button onclick="closeModal()" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest">বন্ধ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const chemistId = urlParams.get('id');
+        let ordersArray = [];
+
+        async function initDashboard() {
+            if (!chemistId) return window.location.href = 'qr-scanner.html';
+            
+            // ১. দোকানদারের বেসিক ডাটা লোড
+            try {
+                const docSnap = await getDoc(doc(db, "users", chemistId));
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    document.getElementById('chemistName').innerText = data.name;
+                    document.getElementById('ownerName').innerText = "মালিক: " + (data.owner || "---");
+                    document.getElementById('addressDisp').innerText = (data.address || "ঠিকানা পাওয়া যায়নি");
+                    document.getElementById('monthlyOrders').innerText = "৳ " + (data.monthlyTotal || 0).toLocaleString('bn-BD');
+                    document.getElementById('priceCat').innerText = "CAT-" + (data.category || "১");
+                    document.getElementById('orderBtnLink').href = `place-order.html?id=${chemistId}`;
+                    document.getElementById('offerLink').href = `dhamaka-offers.html?id=${chemistId}`;
+                }
+
+                // ২. MSO থেকে পাঠানো মেসেজ চেক করা
+                const msgSnap = await getDoc(doc(db, "messages", chemistId));
+                if (msgSnap.exists()) {
+                    const msgData = msgSnap.data();
+                    document.getElementById('msoMessageBox').classList.remove('hidden');
+                    document.getElementById('msoMsgDisplay').innerText = msgData.text;
+                }
+
+                // ৩. অর্ডার হিস্ট্রি লোড
+                const qSnapshot = await getDocs(query(collection(db, "orders"), where("chemistId", "==", chemistId)));
+                const historyDiv = document.getElementById('orderHistory');
+                historyDiv.innerHTML = "";
+
+                if (qSnapshot.empty) {
+                    historyDiv.innerHTML = `<p class="text-center text-gray-400 text-[10px] py-4 italic">কোনো অর্ডার নেই</p>`;
+                } else {
+                    ordersArray = [];
+                    qSnapshot.forEach(d => ordersArray.push({ id: d.id, ...d.data() }));
+                    ordersArray.sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0));
+
+                    ordersArray.slice(0, 3).forEach(order => {
+                        const dt = order.timestamp?.toDate();
+                        const dateStr = dt ? dt.toLocaleDateString('bn-BD') : '---';
+                        let statusColor = order.status === 'Delivered' ? "text-emerald-500 bg-emerald-50" : "text-orange-400 bg-orange-50";
+
+                        historyDiv.innerHTML += `
+                            <div onclick="openOrderModal('${order.id}')" class="order-card bg-white p-3 rounded-2xl shadow-sm flex justify-between items-center border border-slate-100">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center border text-sm">📦</div>
+                                    <div>
+                                        <p class="text-[11px] font-bold text-slate-700 leading-none">#${order.id.slice(0, 6).toUpperCase()}</p>
+                                        <p class="text-[8px] text-gray-400 font-bold mt-1">${dateStr}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[12px] font-black text-blue-600">৳ ${order.totalAmount.toLocaleString('bn-BD')}</p>
+                                    <span class="text-[7px] font-bold uppercase px-1.5 py-0.5 rounded-md ${statusColor}">${order.status || 'Pending'}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        window.submitComplaint = async () => {
+            const text = document.getElementById('complaintText').value.trim();
+            if (!text) return alert("দয়া করে কিছু লিখুন!");
+            const btn = document.getElementById('complaintBtn');
+            btn.innerText = "..."; btn.disabled = true;
+            try {
+                await addDoc(collection(db, "complaints"), { chemistId: chemistId, text: text, status: "New", timestamp: serverTimestamp() });
+                alert("ধন্যবাদ! অভিযোগ পাঠানো হয়েছে।");
+                document.getElementById('complaintText').value = "";
+            } catch (e) { alert("সমস্যা হয়েছে!"); }
+            finally { btn.innerText = "পাঠান"; btn.disabled = false; }
+        };
+
+        window.openOrderModal = (id) => {
+            const order = ordersArray.find(o => o.id === id);
+            document.getElementById('modalOrderId').innerText = "অর্ডার #" + id.slice(0, 6).toUpperCase();
+            document.getElementById('modalOrderDate').innerText = order.timestamp?.toDate().toLocaleString('bn-BD');
+            document.getElementById('modalTotalBill').innerText = "৳ " + order.totalAmount.toLocaleString('bn-BD');
+            document.getElementById('modalItemsBody').innerHTML = order.items.map(i => `
+                <tr class="text-xs">
+                    <td class="py-3 font-bold text-slate-700">
+                        ${i.name} <span class="text-blue-500 font-normal ml-1">${i.strength || ''}</span>
+                    </td>
+                    <td class="text-center font-bold text-blue-600">${i.qty}</td>
+                    <td class="text-right font-bold text-slate-600">৳${i.price * i.qty}</td>
+                </tr>
+            `).join('');
+            const modal = document.getElementById('orderModal');
+            const content = modal.querySelector('.modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => content.classList.remove('translate-y-full'), 10);
+        };
+
+        window.closeModal = () => {
+            const modal = document.getElementById('orderModal');
+            const content = modal.querySelector('.modal-content');
+            content.classList.add('translate-y-full');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        initDashboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+--- START OF FILE assistant-entry.html ---
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>রোগী এন্ট্রি - SmartConnect Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .input-focus:focus { border-color: #6366f1; ring: 2px; ring-color: #e0e7ff; }
+        .status-pill { @apply px-2 py-0.5 rounded-full text-[8px] font-black uppercase; }
+    </style>
+</head>
+<body class="pb-10">
+
+    <!-- হেডার -->
+    <div class="bg-indigo-600 text-white pt-10 pb-16 px-6 rounded-b-[3rem] shadow-xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+        <div class="max-w-md mx-auto relative flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button onclick="history.back()" class="text-white">←</button>
+                <div>
+                    <h1 class="text-lg font-black italic">রোগী এন্ট্রি</h1>
+                    <p id="docName" class="text-[9px] text-indigo-200 font-bold uppercase tracking-widest">ডাক্তারের নাম লোড হচ্ছে...</p>
+                </div>
+            </div>
+            <span class="text-2xl bg-white/20 p-2 rounded-xl">📝</span>
+        </div>
+    </div>
+
+    <main class="px-4 max-w-md mx-auto -mt-8 relative z-10">
+        
+        <!-- এন্ট্রি ফর্ম -->
+        <div class="bg-white p-6 rounded-[2.5rem] shadow-xl border border-white mb-8">
+            <form id="patientForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2">
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase">রোগীর নাম</label>
+                        <input type="text" id="pName" placeholder="সম্পূর্ণ নাম লিখুন" required class="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border-2 border-transparent focus:border-indigo-500 outline-none transition-all">
+                    </div>
+                    
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase">বয়স</label>
+                        <input type="number" id="pAge" placeholder="বয়স" required class="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border-2 border-transparent focus:border-indigo-500 outline-none transition-all">
+                    </div>
+                    
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase">লিঙ্গ</label>
+                        <select id="pGender" class="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border-2 border-transparent focus:border-indigo-500 outline-none transition-all">
+                            <option value="পুরুষ">পুরুষ</option>
+                            <option value="মহিলা">মহিলা</option>
+                            <option value="অন্যান্য">অন্যান্য</option>
+                        </select>
+                    </div>
+
+                    <div class="col-span-2">
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase">মোবাইল নম্বর</label>
+                        <input type="tel" id="pPhone" placeholder="017XXXXXXXX" required class="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border-2 border-transparent focus:border-indigo-500 outline-none transition-all">
+                    </div>
+
+                    <div class="col-span-2">
+                        <label class="text-[10px] font-bold text-slate-400 ml-1 uppercase">প্রাথমিক সমস্যা (চিফ কমপ্লেন)</label>
+                        <input type="text" id="pComplaints" placeholder="জ্বর, কাশি, ব্যাথা ইত্যাদি" class="w-full bg-slate-50 p-3 rounded-xl text-sm font-bold border-2 border-transparent focus:border-indigo-500 outline-none transition-all">
+                    </div>
+                </div>
+
+                <button type="submit" id="saveBtn" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 active:scale-95 transition-all mt-2">
+                    আজকের সিরিয়ালে দিন
+                </button>
+            </form>
+        </div>
+
+        <!-- আজকের সিরিয়াল লিস্ট -->
+        <div class="flex justify-between items-center mb-4 px-2">
+            <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">আজকের সিরিয়াল</h3>
+            <span id="todayCountBadge" class="bg-indigo-100 text-indigo-600 text-[9px] font-black px-2 py-1 rounded-full">০ জন</span>
+        </div>
+        
+        <div id="todayQueue" class="space-y-3">
+            <div class="text-center py-10 opacity-30 italic text-sm">লোড হচ্ছে...</div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, addDoc, getDoc, doc, query, where, onSnapshot, serverTimestamp, deleteDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const docId = urlParams.get('docId');
+
+        async function init() {
+            if (!docId) return alert("ডক্টর আইডি পাওয়া যায়নি!");
+
+            // ডাক্তারের নাম লোড
+            const dSnap = await getDoc(doc(db, "doctors", docId));
+            if(dSnap.exists()) {
+                document.getElementById('docName').innerText = "ডাঃ " + dSnap.data().name;
+            }
+
+            loadTodayQueue();
+        }
+
+        // ফর্ম সাবমিশন
+        document.getElementById('patientForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerText = "সেভ হচ্ছে...";
+
+            // তারিখ ফরম্যাট: YYYY-MM-DD (ফিল্টার করার জন্য এটিই সেরা)
+            const dateStr = new Date().toLocaleDateString('en-CA'); 
+
+            const patientData = {
+                doctorId: docId,
+                name: document.getElementById('pName').value,
+                age: document.getElementById('pAge').value,
+                gender: document.getElementById('pGender').value,
+                phone: document.getElementById('pPhone').value,
+                complaints: document.getElementById('pComplaints').value,
+                status: "waiting", // waiting, inside, completed, test_pending
+                payment: "unpaid",
+                dateStr: dateStr, // এই ফিল্ডটি দিয়ে পরে ফিল্টার করা যাবে
+                timestamp: serverTimestamp()
+            };
+
+            try {
+                await addDoc(collection(db, "patient_queue"), patientData);
+                document.getElementById('patientForm').reset();
+            } catch (err) {
+                alert("ত্রুটি: তথ্য সেভ করা যায়নি!");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "আজকের সিরিয়ালে দিন";
+            }
+        });
+
+        // আজকের সিরিয়াল রিয়েল-টাইম লোড
+        function loadTodayQueue() {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            const q = query(
+                collection(db, "patient_queue"), 
+                where("doctorId", "==", docId),
+                where("dateStr", "==", todayStr) // তারিখ দিয়ে ফিল্টার
+            );
+
+            onSnapshot(q, (snapshot) => {
+                const listDiv = document.getElementById('todayQueue');
+                document.getElementById('todayCountBadge').innerText = snapshot.size + " জন";
+                listDiv.innerHTML = "";
+
+                if (snapshot.empty) {
+                    listDiv.innerHTML = `<p class="text-center text-slate-400 text-[10px] py-10 uppercase font-bold tracking-widest italic">আজ এখন পর্যন্ত কেউ আসেনি</p>`;
+                    return;
+                }
+
+                // টাইমস্ট্যাম্প অনুযায়ী সর্ট করে দেখানো (সহকারীর দেখার সুবিধার জন্য)
+                const sortedDocs = snapshot.docs.sort((a, b) => (b.data().timestamp?.seconds || 0) - (a.data().timestamp?.seconds || 0));
+
+                sortedDocs.forEach(d => {
+                    const p = d.data();
+                    let statusLabel = p.status === 'waiting' ? 'অপেক্ষমাণ' : (p.status === 'inside' ? 'ভিতরে' : 'দেখা শেষ');
+                    let statusColor = p.status === 'waiting' ? 'bg-orange-100 text-orange-600' : (p.status === 'inside' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600');
+
+                    listDiv.innerHTML += `
+                        <div class="bg-white p-4 rounded-3xl border border-white shadow-sm flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 bg-indigo-50 rounded-full flex items-center justify-center text-[10px] font-black text-indigo-600">
+                                    ${p.phone.slice(-2)}
+                                </div>
+                                <div>
+                                    <h4 class="text-xs font-black text-slate-800">${p.name}</h4>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">${p.phone} | ${p.age}Y</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="status-pill ${statusColor}">${statusLabel}</span>
+                                <button onclick="deleteEntry('${d.id}')" class="text-slate-300 hover:text-red-400 text-[10px] px-1">মুছে ফেলুন</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // সিরিয়াল ডিলিট করার ফাংশন
+        window.deleteEntry = async (id) => {
+            if (confirm("আপনি কি নিশ্চিত যে এই সিরিয়ালটি মুছে ফেলবেন?")) {
+                await deleteDoc(doc(db, "patient_queue", id));
+            }
+        };
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+--- START OF FILE qr-scanner.html ---
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartConnect - সার্বজনীন স্ক্যানার</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #0f172a; }
+        #reader { border: none !important; position: relative; }
+        #reader__dashboard_section_csr button {
+            background-color: #2563eb !important;
+            color: white !important;
+            padding: 10px 20px !important;
+            border-radius: 12px !important;
+            font-size: 12px !important;
+            text-transform: uppercase !important;
+            font-weight: bold !important;
+            border: none;
+            margin-top: 10px;
+        }
+        #reader video {
+            border-radius: 2rem !important;
+            object-fit: cover !important;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 text-white">
+
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-black italic text-blue-500 uppercase tracking-tighter">SmartConnect</h1>
+        <p class="text-xs text-gray-400 uppercase tracking-widest mt-2">আইডি কার্ডটি ক্যামেরার সামনে ধরুন</p>
+    </div>
+
+    <div class="w-full max-w-sm bg-white rounded-[2.5rem] overflow-hidden shadow-2xl p-4 border-4 border-blue-500/20 relative">
+        <div id="reader" class="w-full"></div>
+
+        <div class="mt-4 p-4 border-t border-gray-100 text-center">
+            <p class="text-[10px] text-gray-400 uppercase font-black mb-3">অথবা গ্যালারি থেকে ছবি সিলেক্ট করুন</p>
+            <input type="file" id="qr-input-file" accept="image/*" 
+                class="text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+        </div>
+    </div>
+
+    <div class="mt-12 text-center">
+        <p id="status" class="text-xs text-blue-500 font-bold mb-6 uppercase animate-pulse">স্ক্যান করার জন্য প্রস্তুত</p>
+        <a href="index.html" class="text-gray-400 underline text-[10px] font-bold uppercase tracking-widest hover:text-white transition">ফিরে যান</a>
+    </div>
+
+    <script>
+        const SECRET_KEY = "APON-SECURE-V1";
+
+        function onScanSuccess(decodedText) {
+            try {
+                // ডিকোড করার লজিক (Format: KEY:ROLE:ID)
+                const decryptedData = atob(decodedText); 
+                const parts = decryptedData.split(":");
+
+                if (parts.length === 3 && parts[0] === SECRET_KEY) {
+                    const role = parts[1]; 
+                    const targetId = parts[2]; 
+
+                    document.getElementById('status').innerText = "যাচাই সফল! প্রবেশ করা হচ্ছে...";
+                    
+                    // সেশন স্টোরেজে রোল সেভ করা (ঐচ্ছিক কিন্তু ভালো প্র্যাকটিস)
+                    localStorage.setItem('userRole', role);
+                    
+                    html5QrcodeScanner.clear().then(() => {
+                        if (role === 'chemist') {
+                            window.location.href = `chemist-dashboard.html?id=${targetId}`;
+                        } 
+                        else if (role === 'doctor') {
+                            window.location.href = `doctor-dashboard.html?id=${targetId}`;
+                        } 
+                        else if (role === 'assistant') {
+                            // আপনার দেওয়া ফাইল নেম অনুযায়ী dactorassistantdashboard.html
+                            window.location.href = `dactorassistantdashboard.html?docId=${targetId}`;
+                        } 
+                        else {
+                            alert("অজানা রোল! সঠিক কার্ড স্ক্যান করুন।");
+                            location.reload();
+                        }
+                    });
+                } else {
+                    alert("ভুল কিউআর কোড! শুধুমাত্র স্মার্ট কানেক্ট কার্ড ব্যবহার করুন।");
+                    location.reload();
+                }
+            } catch (e) {
+                alert("অচেনা কোড! এটি আমাদের সিস্টেমের কার্ড নয়।");
+                location.reload();
+            }
+        }
+
+        const config = { 
+            fps: 20, 
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+        };
+
+        const html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
+        html5QrcodeScanner.render(onScanSuccess);
+
+        const fileInput = document.getElementById('qr-input-file');
+        fileInput.addEventListener('change', e => {
+            if (e.target.files.length == 0) return;
+            const imageFile = e.target.files[0];
+            const html5QrCode = new Html5Qrcode("reader");
+            document.getElementById('status').innerText = "প্রসেসিং হচ্ছে...";
+            html5QrCode.scanFile(imageFile, true)
+                .then(decodedText => { onScanSuccess(decodedText); })
+                .catch(err => {
+                    alert("ছবিতে কোনো কিউআর কোড পাওয়া যায়নি।");
+                    document.getElementById('status').innerText = "আবার চেষ্টা করুন";
+                });
+        });
+    </script>
+</body>
+</html>

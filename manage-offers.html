@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>অফার ম্যানেজমেন্ট - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .modal-animation { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- ১. হেডার -->
+    <div class="bg-slate-900 text-white px-6 py-8 rounded-b-[3rem] shadow-xl mb-6">
+        <div class="flex justify-between items-center">
+            <button onclick="history.back()" class="text-blue-400 font-bold flex items-center">
+                <span class="text-lg mr-1">←</span> ফিরে যান
+            </button>
+            <h1 class="text-xl font-black italic">অফার প্যাকেজসমূহ</h1>
+            <div class="w-8"></div>
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        <!-- নতুন অফার যোগ করার বাটন -->
+        <button onclick="openOfferModal()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg mb-8 active:scale-95 transition">
+            🎁 নতুন প্যাকেজ তৈরি করুন
+        </button>
+
+        <!-- অফার লিস্ট -->
+        <div id="offerList" class="space-y-4">
+            <div class="p-20 text-center text-gray-300 italic text-xs">অফার লোড হচ্ছে...</div>
+        </div>
+    </div>
+
+    <!-- ২. অ্যাড/এডিট মোডাল (Popup) -->
+    <div id="offerModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl modal-animation">
+            <h2 id="modalTitle" class="text-xl font-black text-slate-800 mb-6">অফার প্যাকেজ তথ্য</h2>
+            
+            <form id="offerForm" class="space-y-4">
+                <input type="hidden" id="offerId">
+                
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">প্যাকেজের নাম</label>
+                    <input type="text" id="offerTitle" placeholder="উদা: সিলভার বা ঈদ অফার" required class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none focus:border-blue-500 text-sm">
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">টার্গেট টাকা (৳)</label>
+                    <input type="number" id="offerTarget" placeholder="কত টাকার অর্ডার?" required class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">পুরস্কার/উপহারের বিবরণ</label>
+                    <textarea id="offerReward" placeholder="দোকানদার কী উপহার পাবে?" required class="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-3 outline-none focus:border-blue-500 text-sm h-24"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeOfferModal()" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-xs uppercase tracking-widest">বাতিল</button>
+                    <button type="submit" id="saveBtn" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-blue-100">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+        let allOffers = [];
+
+        // ১. ডাটা লোড করা
+        async function loadOffers() {
+            const listDiv = document.getElementById('offerList');
+            try {
+                // টার্গেট অনুযায়ী ছোট থেকে বড় সাজানো থাকবে
+                const q = query(collection(db, "offers"), orderBy("target", "asc"));
+                const snap = await getDocs(q);
+                allOffers = [];
+                listDiv.innerHTML = "";
+                
+                if(snap.empty) {
+                    listDiv.innerHTML = `<div class="p-20 text-center text-gray-400 italic text-xs bg-white rounded-3xl border border-dashed border-gray-200">বর্তমানে কোনো অফার নেই। নতুন তৈরি করুন।</div>`;
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const offer = { id: d.id, ...d.data() };
+                    allOffers.push(offer);
+                    renderOfferCard(offer);
+                });
+            } catch (e) { 
+                console.error(e); 
+                listDiv.innerHTML = `<p class="text-center text-red-500 py-10">ডাটা লোড সমস্যা!</p>`;
+            }
+        }
+
+        // ২. অফার কার্ড রেন্ডার করা
+        function renderOfferCard(off) {
+            const listDiv = document.getElementById('offerList');
+            listDiv.innerHTML += `
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-white flex justify-between items-center transition active:scale-95">
+                    <div class="flex-1">
+                        <h3 class="text-sm font-black text-slate-800 leading-none mb-1">${off.title}</h3>
+                        <p class="text-[10px] text-blue-600 font-bold uppercase tracking-widest">টার্গেট: ৳ ${off.target.toLocaleString('bn-BD')}</p>
+                        <p class="text-[9px] text-gray-400 mt-2 line-clamp-1">${off.reward}</p>
+                    </div>
+                    <div class="flex gap-2 ml-4">
+                        <button onclick="editOffer('${off.id}')" class="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border border-blue-100">✏️</button>
+                        <button onclick="deleteOffer('${off.id}')" class="w-9 h-9 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center border border-rose-100">🗑️</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ৩. মোডাল কন্ট্রোল
+        window.openOfferModal = () => {
+            document.getElementById('offerModal').classList.remove('hidden');
+            document.getElementById('offerForm').reset();
+            document.getElementById('offerId').value = "";
+            document.getElementById('modalTitle').innerText = "নতুন প্যাকেজ তৈরি";
+        };
+
+        window.closeOfferModal = () => {
+            document.getElementById('offerModal').classList.add('hidden');
+        };
+
+        // ৪. এডিট ফাংশন
+        window.editOffer = (id) => {
+            const off = allOffers.find(o => o.id === id);
+            document.getElementById('offerId').value = off.id;
+            document.getElementById('offerTitle').value = off.title;
+            document.getElementById('offerTarget').value = off.target;
+            document.getElementById('offerReward').value = off.reward;
+            document.getElementById('modalTitle').innerText = "প্যাকেজ এডিট করুন";
+            document.getElementById('offerModal').classList.remove('hidden');
+        };
+
+        // ৫. সেভ/আপডেট লজিক
+        document.getElementById('offerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.innerText = "সেভ হচ্ছে...";
+            saveBtn.disabled = true;
+
+            const id = document.getElementById('offerId').value;
+            const data = {
+                title: document.getElementById('offerTitle').value,
+                target: Number(document.getElementById('offerTarget').value),
+                reward: document.getElementById('offerReward').value,
+                timestamp: serverTimestamp()
+            };
+
+            try {
+                if(id) {
+                    await updateDoc(doc(db, "offers", id), data);
+                } else {
+                    await addDoc(collection(db, "offers"), data);
+                }
+                closeOfferModal();
+                loadOffers();
+            } catch (e) { alert("সমস্যা হয়েছে!"); }
+            finally {
+                saveBtn.innerText = "সেভ করুন";
+                saveBtn.disabled = false;
+            }
+        });
+
+        // ৬. ডিলিট লজিক
+        window.deleteOffer = async (id) => {
+            if(confirm("আপনি কি নিশ্চিতভাবে এই প্যাকেজটি ডিলিট করতে চান?")) {
+                try {
+                    await deleteDoc(doc(db, "offers", id));
+                    loadOffers();
+                } catch (e) { alert("ডিলিট করা যায়নি!"); }
+            }
+        };
+
+        loadOffers();
+    </script>
+</body>
+</html>

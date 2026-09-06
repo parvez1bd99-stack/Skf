@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartConnect - অল অর্ডার ফিড</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .order-card { animation: slideIn 0.3s ease-out forwards; opacity: 0; }
+        @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    </style>
+</head>
+<body class="pb-10">
+
+    <!-- হেডার -->
+    <nav class="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-lg mx-auto flex items-center gap-4">
+            <button onclick="window.history.back()" class="text-xl">⬅</button>
+            <div>
+                <h1 class="text-lg font-black text-blue-400 leading-none">অর্ডার ম্যানেজমেন্ট</h1>
+                <p id="totalOrderCount" class="text-[9px] font-bold text-blue-200 uppercase tracking-widest">মোট ০টি অর্ডার পাওয়া গেছে</p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="p-4 max-w-lg mx-auto">
+        <!-- সার্চ ও ফিল্টার (অপশনাল) -->
+        <div class="mb-6">
+            <input type="text" id="searchInput" oninput="filterOrders()" placeholder="ফার্মেসির নাম দিয়ে খুঁজুন..." class="w-full bg-white border border-slate-200 rounded-2xl p-4 text-sm outline-none focus:border-blue-500 shadow-sm">
+        </div>
+
+        <!-- অর্ডার লিস্ট কন্টেইনার -->
+        <div id="orderList" class="space-y-4">
+            <div class="p-20 text-center">
+                <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                <p class="text-gray-400 italic text-xs">অর্ডার লোড হচ্ছে...</p>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, query, orderBy, getDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+
+        let allOrders = [];
+
+        // রিয়েল-টাইম লিসেনার ব্যবহার করা হয়েছে যাতে পেজ রিফ্রেশ ছাড়াই নতুন অর্ডার আসে
+        async function initOrderFeed() {
+            const q = query(collection(db, "orders"), orderBy("timestamp", "desc"));
+            
+            onSnapshot(q, async (snapshot) => {
+                const orderListDiv = document.getElementById('orderList');
+                document.getElementById('totalOrderCount').innerText = `মোট ${snapshot.size}টি অর্ডার পাওয়া গেছে`;
+                
+                if (snapshot.empty) {
+                    orderListDiv.innerHTML = `<div class="p-20 text-center text-gray-400 italic text-xs">কোনো অর্ডার পাওয়া যায়নি।</div>`;
+                    return;
+                }
+
+                orderListDiv.innerHTML = "";
+                allOrders = [];
+
+                for (const orderDoc of snapshot.docs) {
+                    const order = { id: orderDoc.id, ...orderDoc.data() };
+                    allOrders.push(order);
+                    await renderOrderCard(order);
+                }
+            });
+        }
+
+        async function renderOrderCard(order) {
+            const orderListDiv = document.getElementById('orderList');
+            const orderDate = order.timestamp ? order.timestamp.toDate() : new Date();
+            
+            // দোকানদারের তথ্য লোড (ক্যাশ মেমোরি হিসেবে ব্যবহার করা যেতে পারে অপ্টিমাইজেশনের জন্য)
+            let chemistName = "অচেনা দোকান";
+            let ownerName = "মালিকের নাম নেই";
+            let route = "লোকেশন নেই";
+            let phone = "নম্বর নেই";
+
+            const chemistSnap = await getDoc(doc(db, "users", order.chemistId));
+            if(chemistSnap.exists()) {
+                const cData = chemistSnap.data();
+                chemistName = cData.name;
+                ownerName = cData.owner;
+                route = cData.route;
+                phone = cData.phone1;
+            }
+
+            const timeStr = orderDate.toLocaleTimeString('bn-BD', {hour: '2-digit', minute:'2-digit'});
+            const dateStr = orderDate.toLocaleDateString('bn-BD');
+            
+            let statusColor = "text-orange-500 bg-orange-50";
+            if(order.status === "Delivered") statusColor = "text-emerald-500 bg-emerald-50";
+            if(order.status === "Processing") statusColor = "text-blue-500 bg-blue-50";
+
+            const cardHTML = `
+                <div class="order-card bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col hover:border-blue-300 transition">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-xl border">🏪</div>
+                            <div>
+                                <h3 class="text-sm font-black text-slate-800 leading-none pharmacy-name">${chemistName}</h3>
+                                <p class="text-[9px] text-gray-400 font-bold uppercase mt-1 italic tracking-widest">${ownerName}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-black text-blue-600 leading-none mb-1">৳ ${order.totalAmount.toLocaleString('bn-BD')}</p>
+                            <span class="text-[8px] px-2 py-0.5 rounded-full font-black uppercase ${statusColor}">${order.status || 'Pending'}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4 bg-slate-50 p-3 rounded-2xl">
+                        <div class="flex items-center gap-1.5 overflow-hidden">
+                            <span class="text-[10px]">📍</span>
+                            <p class="text-[9px] font-bold text-slate-500 truncate uppercase">${route}</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <span class="text-[10px]">📞</span>
+                            <p class="text-[9px] font-bold text-slate-500 uppercase">${phone}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center border-t pt-3 border-gray-50">
+                        <div class="text-[9px] text-gray-400 font-bold uppercase">
+                            📅 ${dateStr} <span class="mx-1">|</span> ⏰ ${timeStr}
+                        </div>
+                        <a href="order-details.html?id=${order.id}" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition">বিবরণ দেখুন</a>
+                    </div>
+                </div>
+            `;
+            orderListDiv.insertAdjacentHTML('beforeend', cardHTML);
+        }
+
+        // সার্চ ফাংশন
+        window.filterOrders = () => {
+            const val = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.order-card');
+            cards.forEach(card => {
+                const name = card.querySelector('.pharmacy-name').innerText.toLowerCase();
+                card.style.display = name.includes(val) ? "flex" : "none";
+            });
+        };
+
+        initOrderFeed();
+    </script>
+</body>
+</html>

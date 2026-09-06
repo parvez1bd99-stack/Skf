@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartConnect - ফার্মেসি ম্যানেজমেন্ট</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; }
+        .qr-card { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        .modal-animation { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- হেডার -->
+    <div class="bg-blue-700 text-white px-6 py-8 rounded-b-[3rem] shadow-xl mb-6 text-center">
+        <div class="flex justify-between items-center mb-4">
+            <button onclick="history.back()" class="text-blue-100 font-bold text-sm">← ফিরে যান</button>
+            <h1 class="text-xl font-black italic">ফার্মেসি প্রোফাইল লিস্ট</h1>
+            <div class="w-8"></div>
+        </div>
+        <div class="relative">
+            <input type="text" id="searchInput" oninput="filterChemists()" placeholder="নাম, মালিক বা রুট দিয়ে খুঁজুন..." 
+                class="w-full bg-white border-none rounded-2xl py-3 px-6 outline-none text-sm text-slate-800 shadow-inner">
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        <button onclick="openModal()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg mb-8 active:scale-95 transition">
+            🏪 নতুন ফার্মেসি যোগ করুন
+        </button>
+
+        <div id="chemistList" class="space-y-4">
+            <div class="p-20 text-center text-gray-300 italic text-xs">লোড হচ্ছে...</div>
+        </div>
+    </div>
+
+    <!-- অ্যাড/এডিট মোডাল -->
+    <div id="chemistModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl modal-animation overflow-y-auto max-h-[90vh]">
+            <h2 id="modalTitle" class="text-xl font-black text-slate-800 mb-6 border-b pb-2">ফার্মেসি তথ্য ফরম</h2>
+            <form id="chemistForm" class="space-y-4">
+                <input type="hidden" id="cId">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ফার্মেসির নাম</label>
+                    <input type="text" id="cName" placeholder="দোকানের নাম" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">মালিকের নাম</label>
+                    <input type="text" id="cOwner" placeholder="প্রোপাইটারের নাম" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ফোন নম্বর ১ (লগইন আইডি)</label>
+                        <input type="tel" id="cPhone1" placeholder="017XXXXXXXX" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">লগইন পাসওয়ার্ড</label>
+                        <input type="text" id="cPass" placeholder="******" class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">রুট বা এলাকা</label>
+                    <input type="text" id="cRoute" placeholder="উদা: বাজার রোড" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ঠিকানা / লোকেশন</label>
+                    <textarea id="cAddress" placeholder="পুরো ঠিকানা" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm h-16"></textarea>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
+                    <label class="text-[10px] font-black text-blue-600 uppercase ml-1">প্রাইস ক্যাটাগরি</label>
+                    <select id="cCategory" class="w-full bg-white border-2 border-blue-200 rounded-xl p-2.5 mt-1 outline-none text-sm font-bold text-blue-700">
+                        <option value="1">ক্যাটাগরি - ১</option>
+                        <option value="2">ক্যাটাগরি - ২</option>
+                        <option value="3">ক্যাটাগরি - ৩</option>
+                        <option value="4">ক্যাটাগরি - ৪</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal()" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-xs uppercase">বাতিল</button>
+                    <button type="submit" id="saveBtn" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- মেসেজ মোডাল (MSO নোটিশ পাঠানোর জন্য) -->
+    <div id="msgModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl modal-animation">
+            <h3 id="msgTargetName" class="text-sm font-black text-slate-800 mb-4">বার্তা পাঠান</h3>
+            <textarea id="msoMsgText" placeholder="দোকানদারের জন্য আপনার জরুরি বার্তাটি এখানে লিখুন..." class="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-4 text-sm outline-none focus:border-indigo-500 h-32 mb-4 font-semibold"></textarea>
+            <div class="flex gap-2">
+                <button onclick="closeMsgModal()" class="flex-1 bg-gray-100 text-gray-400 py-3 rounded-xl font-bold text-xs uppercase">বাতিল</button>
+                <button onclick="sendMessage()" id="sendMsgBtn" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg">সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- কিউআর মোডাল -->
+    <div id="qrModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 z-50">
+        <div class="max-w-xs w-full text-center">
+            <div id="printableCard" class="qr-card p-8 rounded-[2.5rem] border-2 border-blue-500/30 shadow-2xl">
+                <h2 class="text-3xl font-black italic text-blue-400 mb-2 uppercase tracking-tighter">SmartConnect</h2>
+                <div class="bg-white p-4 rounded-3xl inline-block mb-6 shadow-xl" id="qrcode"></div>
+                <h3 id="qrName" class="text-xl font-black text-white leading-tight">নাম</h3>
+                <p id="qrOwner" class="text-[9px] text-gray-400 font-bold uppercase mb-1">মালিকের নাম</p>
+                <p id="qrRoute" class="text-[10px] text-blue-400 font-bold uppercase tracking-widest">রুট</p>
+            </div>
+            <button onclick="closeQrModal()" class="mt-6 text-white/50 text-xs font-bold uppercase underline">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, updateDoc, doc, addDoc, query, where, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+        const SECRET_KEY = "APON-SECURE-V1";
+        let allChemists = [];
+        let currentTargetId = "";
+
+        // ১. কেমিস্টদের তালিকা লোড করা
+        async function loadChemists() {
+            const listDiv = document.getElementById('chemistList');
+            try {
+                const snap = await getDocs(query(collection(db, "users"), where("role", "==", "chemist")));
+                allChemists = [];
+                listDiv.innerHTML = "";
+                
+                if(snap.empty) {
+                    listDiv.innerHTML = `<p class="text-center text-gray-400 py-10">কোনো ফার্মেসি পাওয়া যায়নি।</p>`;
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const c = { id: d.id, ...d.data() };
+                    allChemists.push(c);
+                    renderChemistCard(c);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function renderChemistCard(c) {
+            const listDiv = document.getElementById('chemistList');
+            listDiv.innerHTML += `
+                <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-white flex justify-between items-center transition active:scale-95">
+                    <div class="flex-1">
+                        <h3 class="text-sm font-black text-slate-800 leading-none mb-1">${c.name}</h3>
+                        <p class="text-[10px] text-blue-600 font-bold uppercase tracking-tighter italic">মালিক: ${c.owner || '---'}</p>
+                        <p class="text-[9px] text-gray-400 font-bold uppercase mt-1">📍 ${c.route}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="openMessageModal('${c.id}', '${c.name}')" class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border">💬</button>
+                        <button onclick="showQR('${c.id}', '${c.name}', '${c.owner}', '${c.route}')" class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border">📷</button>
+                        <button onclick="editChemist('${c.id}')" class="w-10 h-10 bg-gray-50 text-gray-400 rounded-xl flex items-center justify-center border">✏️</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ২. মেসেজ ফাংশনসমূহ
+        window.openMessageModal = (id, name) => {
+            currentTargetId = id;
+            document.getElementById('msgTargetName').innerText = name + "-কে বার্তা পাঠান";
+            document.getElementById('msoMsgText').value = ""; 
+            document.getElementById('msgModal').classList.remove('hidden');
+        };
+
+        window.closeMsgModal = () => document.getElementById('msgModal').classList.add('hidden');
+
+        window.sendMessage = async () => {
+            const text = document.getElementById('msoMsgText').value.trim();
+            const btn = document.getElementById('sendMsgBtn');
+            if(!text) return alert("দয়া করে মেসেজ লিখুন!");
+            
+            btn.innerText = "..."; btn.disabled = true;
+            try {
+                await setDoc(doc(db, "messages", currentTargetId), { text: text, timestamp: new Date() });
+                alert("মেসেজ পাঠানো হয়েছে!");
+                closeMsgModal();
+            } catch (e) { alert("ত্রুটি হয়েছে!"); }
+            finally { btn.innerText = "সেভ করুন"; btn.disabled = false; }
+        };
+
+        // ৩. অ্যাড ও এডিট ফাংশন
+        window.openModal = () => {
+            document.getElementById('chemistModal').classList.remove('hidden');
+            document.getElementById('chemistForm').reset();
+            document.getElementById('cId').value = "";
+            document.getElementById('modalTitle').innerText = "নতুন ফার্মেসি যোগ";
+        };
+
+        window.closeModal = () => document.getElementById('chemistModal').classList.add('hidden');
+
+        window.editChemist = (id) => {
+            const c = allChemists.find(item => item.id === id);
+            document.getElementById('cId').value = c.id;
+            document.getElementById('cName').value = c.name;
+            document.getElementById('cOwner').value = c.owner || "";
+            document.getElementById('cPhone1').value = c.phone || "";
+            document.getElementById('cPass').value = c.password || "";
+            document.getElementById('cRoute').value = c.route;
+            document.getElementById('cAddress').value = c.address || "";
+            document.getElementById('cCategory').value = c.category || "1";
+            document.getElementById('modalTitle').innerText = "তথ্য আপডেট করুন";
+            document.getElementById('chemistModal').classList.remove('hidden');
+        };
+
+        document.getElementById('chemistForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('cId').value;
+            const data = {
+                name: document.getElementById('cName').value,
+                owner: document.getElementById('cOwner').value,
+                phone: document.getElementById('cPhone1').value,
+                password: document.getElementById('cPass').value,
+                route: document.getElementById('cRoute').value,
+                address: document.getElementById('cAddress').value,
+                category: document.getElementById('cCategory').value,
+                role: 'chemist'
+            };
+            try {
+                if(id) await updateDoc(doc(db, "users", id), data);
+                else await addDoc(collection(db, "users"), { ...data, monthlyTotal: 0 });
+                
+                alert("সফলভাবে সংরক্ষিত হয়েছে!");
+                closeModal(); loadChemists();
+            } catch (e) { alert("ত্রুটি হয়েছে!"); }
+        });
+
+        // ৪. ইউনিক কিউআর কোড জেনারেশন (SECRET_KEY:role:id)
+        window.showQR = (id, name, owner, route) => {
+            document.getElementById('qrModal').classList.remove('hidden');
+            document.getElementById('qrName').innerText = name;
+            document.getElementById('qrOwner').innerText = "মালিক: " + owner;
+            document.getElementById('qrRoute').innerText = "রুট: " + route;
+            
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = "";
+            
+            // কিউআর ডাটা ইনকোড করা হচ্ছে যাতে স্ক্যানার একে চিনতে পারে
+            const qrData = btoa(SECRET_KEY + ":chemist:" + id); 
+            
+            new QRCode(qrContainer, { 
+                text: qrData, 
+                width: 180, 
+                height: 180, 
+                colorDark: "#0f172a", 
+                colorLight: "#ffffff", 
+                correctLevel: QRCode.CorrectLevel.H 
+            });
+        };
+
+        window.closeQrModal = () => document.getElementById('qrModal').classList.add('hidden');
+
+        // ৫. সার্চ ফাংশন
+        window.filterChemists = () => {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allChemists.filter(c => c.name.toLowerCase().includes(term) || c.route.toLowerCase().includes(term) || (c.owner && c.owner.toLowerCase().includes(term)));
+            const listDiv = document.getElementById('chemistList');
+            listDiv.innerHTML = "";
+            filtered.forEach(c => renderChemistCard(c));
+        };
+
+        loadChemists();
+    </script>
+</body>
+</html>

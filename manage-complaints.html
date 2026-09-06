@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>অভিযোগ ম্যানেজমেন্ট - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .complaint-card { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- ১. হেডার -->
+    <div class="bg-slate-900 text-white px-6 py-8 rounded-b-[3rem] shadow-xl mb-6">
+        <div class="flex justify-between items-center">
+            <button onclick="history.back()" class="text-blue-400 font-bold flex items-center">
+                <span class="text-lg mr-1">←</span> ফিরে যান
+            </button>
+            <h1 class="text-xl font-black italic">দোকানদারদের অভিযোগ</h1>
+            <button onclick="loadComplaints()" class="text-[10px] bg-slate-800 text-blue-400 px-3 py-1 rounded-full font-bold uppercase border border-slate-700">রিফ্রেশ</button>
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        
+        <!-- অভিযোগের তালিকা -->
+        <div id="complaintList" class="space-y-4">
+            <div class="p-20 text-center">
+                <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                <p class="text-gray-400 italic text-xs">অভিযোগগুলো লোড হচ্ছে...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, query, orderBy, deleteDoc, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+
+        async function loadComplaints() {
+            const listDiv = document.getElementById('complaintList');
+            try {
+                // ১. সব অভিযোগ ফেচ করা (নতুন আগে আসবে)
+                const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
+                const snap = await getDocs(q);
+                
+                listDiv.innerHTML = "";
+
+                if(snap.empty) {
+                    listDiv.innerHTML = `<div class="p-20 text-center text-gray-400 italic text-xs bg-white rounded-3xl border border-dashed">এখনো কোনো অভিযোগ পাওয়া যায়নি।</div>`;
+                    return;
+                }
+
+                for (const complaintDoc of snap.docs) {
+                    const data = complaintDoc.data();
+                    const id = complaintDoc.id;
+                    const date = data.timestamp ? data.timestamp.toDate().toLocaleString('bn-BD') : "---";
+
+                    // ২. দোকানদারের নাম নিয়ে আসা
+                    let chemistName = "অচেনা দোকান";
+                    try {
+                        const chemistSnap = await getDoc(doc(db, "users", data.chemistId));
+                        if(chemistSnap.exists()) chemistName = chemistSnap.data().name;
+                    } catch(e) {}
+
+                    // ৩. কার্ড রেন্ডার
+                    listDiv.innerHTML += `
+                        <div class="complaint-card bg-white p-6 rounded-[2rem] shadow-sm border border-white relative overflow-hidden">
+                            <!-- স্ট্যাটাস ট্যাগ -->
+                            <div class="absolute top-4 right-6">
+                                <span class="text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${data.status === 'Solved' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'}">
+                                    ${data.status || 'New'}
+                                </span>
+                            </div>
+
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-xl">👤</div>
+                                <div>
+                                    <h3 class="text-sm font-black text-slate-800 leading-none">${chemistName}</h3>
+                                    <p class="text-[9px] text-gray-400 font-bold uppercase mt-1">${date}</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-50 p-4 rounded-2xl mb-4 border border-slate-100">
+                                <p class="text-xs text-slate-600 leading-relaxed italic">"${data.text}"</p>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button onclick="markSolved('${id}')" class="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-100 transition active:scale-95">সমাধান হয়েছে</button>
+                                <button onclick="deleteComplaint('${id}')" class="w-10 h-10 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center text-lg transition active:scale-90">🗑️</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error(error);
+                listDiv.innerHTML = `<p class="text-center text-red-400 py-10">সার্ভার এরর! ইন্টারেনেট চেক করুন।</p>`;
+            }
+        }
+
+        // সমাধান স্ট্যাটাস আপডেট
+        window.markSolved = async (id) => {
+            try {
+                await updateDoc(doc(db, "complaints", id), { status: "Solved" });
+                loadComplaints();
+            } catch (e) { alert("সমস্যা হয়েছে!"); }
+        };
+
+        // অভিযোগ ডিলিট করা
+        window.deleteComplaint = async (id) => {
+            if(confirm("আপনি কি নিশ্চিতভাবে এই অভিযোগটি ডিলিট করতে চান?")) {
+                try {
+                    await deleteDoc(doc(db, "complaints", id));
+                    loadComplaints();
+                } catch (e) { alert("ডিলিট করা যায়নি।"); }
+            }
+        };
+
+        loadComplaints();
+    </script>
+</body>
+</html>

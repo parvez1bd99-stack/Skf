@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>সহকারী ড্যাশবোর্ড - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .action-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .action-card:active { transform: scale(0.95); }
+        .live-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); } 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0); } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <!-- হেডার এবং ডাক্তার প্রোফাইল -->
+    <div class="bg-indigo-700 text-white pt-10 pb-20 px-6 rounded-b-[3.5rem] shadow-xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+        
+        <div class="max-w-md mx-auto relative">
+            <div class="flex justify-between items-center mb-8">
+                <h1 class="text-xl font-black italic tracking-tighter">Assistant <span class="text-indigo-200">Pro</span></h1>
+                <button onclick="logout()" class="text-[9px] bg-white/10 px-3 py-1.5 rounded-full uppercase font-bold border border-white/20">লগআউট</button>
+            </div>
+            
+            <div class="bg-white/10 p-5 rounded-3xl border border-white/20 flex items-center gap-4 backdrop-blur-md">
+                <div class="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center text-2xl shadow-inner">👨‍⚕️</div>
+                <div>
+                    <p class="text-[9px] font-bold uppercase text-indigo-200 tracking-widest">বর্তমানে দায়িত্বরত</p>
+                    <h2 id="workingFor" class="text-md font-bold leading-tight">লোড হচ্ছে...</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="px-5 max-w-md mx-auto -mt-10 relative z-10">
+        
+        <!-- আজকের স্ট্যাটাস গ্রিড -->
+        <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="bg-white p-4 rounded-[2rem] shadow-lg border border-white text-center">
+                <p class="text-[8px] font-black text-slate-400 uppercase mb-1">অপেক্ষমাণ</p>
+                <h3 id="statWaiting" class="text-xl font-black text-indigo-600">০</h3>
+            </div>
+            <div id="insideStatusCard" class="bg-white p-4 rounded-[2rem] shadow-lg border border-white text-center transition-all">
+                <p class="text-[8px] font-black text-slate-400 uppercase mb-1">ভিডিও কলে</p>
+                <h3 id="statInside" class="text-xl font-black text-rose-500">০</h3>
+            </div>
+            <div class="bg-white p-4 rounded-[2rem] shadow-lg border border-white text-center">
+                <p class="text-[8px] font-black text-slate-400 uppercase mb-1">দেখা শেষ</p>
+                <h3 id="statDone" class="text-xl font-black text-emerald-500">০</h3>
+            </div>
+        </div>
+
+        <!-- ভার্চুয়াল চেম্বার অ্যালার্ট (শুধু যখন ভিডিও কল চলবে) -->
+        <div id="liveCallAlert" class="hidden live-pulse bg-rose-600 text-white p-5 rounded-[2.5rem] mb-6 flex justify-between items-center shadow-xl">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">📹</span>
+                <div>
+                    <h4 class="font-black text-xs uppercase">ভিডিও কল চলছে!</h4>
+                    <p class="text-[9px] opacity-80 uppercase font-bold">রোগীকে ডাক্তারের সাথে কানেক্ট করুন</p>
+                </div>
+            </div>
+            <a id="callLink" href="#" target="_blank" class="bg-white text-rose-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">Join Now</a>
+        </div>
+
+        <!-- মেইন মেনু -->
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <a id="entryLink" href="#" class="action-card col-span-2 bg-indigo-600 p-6 rounded-[2.5rem] shadow-xl shadow-indigo-100 flex items-center justify-between text-white">
+                <div class="flex items-center gap-4">
+                    <div class="text-3xl bg-white/20 w-14 h-14 rounded-2xl flex items-center justify-center">📝</div>
+                    <div>
+                        <h4 class="font-black text-sm uppercase">নতুন রোগী এন্ট্রি</h4>
+                        <p class="text-[9px] text-indigo-200 uppercase font-bold">সিরিয়ালে নাম যোগ করুন</p>
+                    </div>
+                </div>
+                <div class="text-xl opacity-50 mr-2">→</div>
+            </a>
+
+            <!-- আজকের কিউ ম্যানেজমেন্ট -->
+            <a id="queueLink" href="#" class="action-card bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center text-center gap-3">
+                <div class="text-3xl">📋</div>
+                <div>
+                    <h4 class="text-slate-800 font-black text-[10px] uppercase">সিরিয়াল লিস্ট</h4>
+                    <p class="text-[8px] text-slate-400 font-bold uppercase">ম্যানেজ ও প্রিন্ট</p>
+                </div>
+            </a>
+
+            <!-- পুরাতন রেকর্ড -->
+            <a id="recordLink" href="#" class="action-card bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center text-center gap-3">
+                <div class="text-3xl">🔍</div>
+                <div>
+                    <h4 class="text-slate-800 font-black text-[10px] uppercase">পুরাতন রেকর্ড</h4>
+                    <p class="text-[8px] text-slate-400 font-bold uppercase">সার্চ ও হিস্ট্রি</p>
+                </div>
+            </a>
+        </div>
+
+        <p class="text-center text-[9px] text-slate-300 mt-12 font-bold uppercase tracking-[0.2em] italic">SmartConnect Telemedicine Hub v3.1</p>
+    </main>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { doc, getDoc, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const docId = urlParams.get('docId');
+
+        async function init() {
+            if(!docId) { window.location.href = 'index.html'; return; }
+            
+            const docSnap = await getDoc(doc(db, "doctors", docId));
+            if(docSnap.exists()) {
+                document.getElementById('workingFor').innerText = "ডাঃ " + docSnap.data().name;
+                document.getElementById('entryLink').href = `assistant-entry.html?docId=${docId}`;
+                document.getElementById('queueLink').href = `assistant-queue.html?docId=${docId}`;
+                document.getElementById('recordLink').href = `assistant-records.html?docId=${docId}`;
+                document.getElementById('callLink').href = `https://meet.jit.si/SmartConnect_Consultation_${docId}`;
+            }
+
+            // রিয়েল-টাইম স্ট্যাটাস এবং ভার্চুয়াল কল ডিটেকশন
+            const today = new Date().toLocaleDateString();
+            const q = query(collection(db, "patient_queue"), where("doctorId", "==", docId));
+
+            onSnapshot(q, (snapshot) => {
+                let waiting = 0, inside = 0, done = 0;
+                
+                snapshot.forEach(d => {
+                    const data = d.data();
+                    const pDate = data.timestamp?.toDate().toLocaleDateString();
+                    
+                    if(pDate === today) {
+                        if(data.status === 'waiting') waiting++;
+                        if(data.status === 'inside') inside++;
+                        if(data.status === 'completed') done++;
+                    }
+                });
+
+                document.getElementById('statWaiting').innerText = waiting;
+                document.getElementById('statInside').innerText = inside;
+                document.getElementById('statDone').innerText = done;
+
+                // যদি কেউ ভিডিও কলে থাকে (status: inside), তবে ড্যাশবোর্ডে অ্যালার্ট দেখাবে
+                const alertBox = document.getElementById('liveCallAlert');
+                const insideCard = document.getElementById('insideStatusCard');
+                if(inside > 0) {
+                    alertBox.classList.remove('hidden');
+                    insideCard.classList.add('bg-rose-50', 'border-rose-200');
+                } else {
+                    alertBox.classList.add('hidden');
+                    insideCard.classList.remove('bg-rose-50', 'border-rose-200');
+                }
+            });
+        }
+
+        window.logout = () => { localStorage.clear(); location.href='index.html'; };
+        init();
+    </script>
+</body>
+</html>

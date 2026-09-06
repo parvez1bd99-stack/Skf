@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <title>Bulk Import - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 p-10">
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-lg">
+        <h1 class="text-2xl font-black mb-4">মেডিসিন একসাথে আপলোড করুন</h1>
+        <p class="text-sm text-gray-500 mb-6">নিচের বক্সে আপনার JSON ডাটা পেস্ট করুন এবং "আপলোড শুরু করুন" বাটনে ক্লিক করুন। <br> <span class="text-blue-500 font-bold">(অবশ্যই "strength" এবং "group" ফিল্ড ডাটাতে থাকতে হবে)</span></p>
+        
+        <textarea id="jsonData" class="w-full h-64 p-4 border rounded-2xl mb-4 font-mono text-xs" placeholder='[{"name": "Item 1", "strength": "500mg", "group": "NSAID", ...}, {"name": "Item 2", "strength": "20mg", "group": "PPI", ...}]'></textarea>
+        
+        <div class="flex items-center justify-between">
+            <button onclick="startImport()" id="uploadBtn" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">আপলোড শুরু করুন</button>
+            <p id="status" class="text-sm font-bold text-blue-600"></p>
+        </div>
+        
+        <div id="log" class="mt-6 text-[10px] text-gray-400 h-32 overflow-y-auto border-t pt-4"></div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        window.startImport = async () => {
+            const dataField = document.getElementById('jsonData');
+            const status = document.getElementById('status');
+            const log = document.getElementById('log');
+            const btn = document.getElementById('uploadBtn');
+
+            try {
+                const medicines = JSON.parse(dataField.value);
+                if(!Array.isArray(medicines)) return alert("ডাটা অবশ্যই একটি Array হতে হবে!");
+
+                btn.disabled = true;
+                btn.innerText = "প্রসেসিং...";
+                let count = 0;
+
+                for (const med of medicines) {
+                    await addDoc(collection(db, "medicines"), {
+                        name: med.name,
+                        strength: med.strength || "", // নতুন ফিল্ড
+                        generic: med.generic || "",
+                        group: med.group || "",       // নতুন ফিল্ড
+                        indication: med.indication || "",
+                        dosage: med.dosage || "",
+                        warnings: med.warnings || "",
+                        sideEffects: med.sideEffects || "",
+                        stock: Number(med.stock) || 0,
+                        price1: Number(med.price1) || 0,
+                        price2: Number(med.price2) || 0,
+                        price3: Number(med.price3) || 0,
+                        price4: Number(med.price4) || 0
+                    });
+                    count++;
+                    status.innerText = `${count} / ${medicines.length} আপলোড হয়েছে`;
+                    log.innerHTML += `<p>✅ Added: ${med.name} ${med.strength || ''}</p>`;
+                    log.scrollTop = log.scrollHeight;
+                }
+
+                alert("সব মেডিসিন সফলভাবে আপলোড হয়েছে!");
+                btn.disabled = false;
+                btn.innerText = "আপলোড শুরু করুন";
+            } catch (e) {
+                alert("ভুল ডাটা! অনুগ্রহ করে JSON ফরম্যাট চেক করুন।");
+                console.error(e);
+                btn.disabled = false;
+                btn.innerText = "আপলোড শুরু করুন";
+            }
+        };
+    </script>
+</body>
+</html>

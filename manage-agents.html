@@ -1,0 +1,144 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>এজেন্ট ম্যানেজমেন্ট - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; }
+        .modal-anim { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <div class="bg-indigo-800 text-white px-6 py-8 rounded-b-[3rem] shadow-xl mb-6">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <button onclick="history.back()" class="text-indigo-200 font-bold">← ব্যাক</button>
+            <h1 class="text-xl font-black italic">হসপিটাল এজেন্ট লিস্ট</h1>
+            <div class="w-8"></div>
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        <button onclick="openModal()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg mb-8 active:scale-95 transition">
+            🤝 নতুন এজেন্ট যোগ করুন
+        </button>
+
+        <div id="agentList" class="space-y-4">
+            <div class="p-20 text-center text-gray-300 italic text-xs">এজেন্ট লোড হচ্ছে...</div>
+        </div>
+    </div>
+
+    <!-- এজেন্ট অ্যাড মোডাল -->
+    <div id="agentModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl modal-anim">
+            <h2 class="text-xl font-black text-slate-800 mb-6 border-b pb-2">এজেন্ট তথ্য ফরম</h2>
+            <form id="agentForm" class="space-y-4">
+                <input type="hidden" id="agentId">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">এজেন্টের নাম</label>
+                    <input type="text" id="aName" placeholder="নাম লিখুন" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ফোন নম্বর</label>
+                        <input type="tel" id="aPhone" placeholder="মোবাইল নম্বর" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-indigo-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">কমিশন (%)</label>
+                        <input type="number" id="aComm" placeholder="উদা: ৫" required class="w-full bg-indigo-50 border-2 border-indigo-100 text-indigo-700 font-bold rounded-xl p-3 outline-none focus:border-indigo-500 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">লগইন পাসওয়ার্ড</label>
+                    <input type="text" id="aPass" placeholder="গোপন পাসওয়ার্ড" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <div class="flex gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal()" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-xs uppercase">বাতিল</button>
+                    <button type="submit" id="saveBtn" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, addDoc, updateDoc, doc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+        const msoUid = localStorage.getItem('userUid');
+        let allAgents = [];
+
+        async function loadAgents() {
+            const q = query(collection(db, "users"), where("role", "==", "agent"), where("createdBy", "==", msoUid));
+            const snap = await getDocs(q);
+            const listDiv = document.getElementById('agentList');
+            listDiv.innerHTML = "";
+            allAgents = [];
+
+            if(snap.empty) {
+                listDiv.innerHTML = `<p class="text-center text-gray-400 py-10">কোনো এজেন্ট পাওয়া যায়নি।</p>`;
+                return;
+            }
+
+            snap.forEach(d => {
+                const a = { id: d.id, ...d.data() };
+                allAgents.push(a);
+                listDiv.innerHTML += `
+                    <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-white flex justify-between items-center">
+                        <div>
+                            <h3 class="text-sm font-black text-slate-800">${a.name}</h3>
+                            <p class="text-[10px] text-indigo-600 font-bold">কমিশন: ${a.commission}% | 📞 ${a.phone}</p>
+                        </div>
+                        <button onclick="editAgent('${a.id}')" class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border">✏️</button>
+                    </div>
+                `;
+            });
+        }
+
+        window.openModal = () => { 
+            document.getElementById('agentModal').classList.remove('hidden'); 
+            document.getElementById('agentForm').reset();
+            document.getElementById('agentId').value = "";
+        };
+        window.closeModal = () => document.getElementById('agentModal').classList.add('hidden');
+
+        window.editAgent = (id) => {
+            const a = allAgents.find(x => x.id === id);
+            document.getElementById('agentId').value = a.id;
+            document.getElementById('aName').value = a.name;
+            document.getElementById('aPhone').value = a.phone;
+            document.getElementById('aComm').value = a.commission;
+            document.getElementById('aPass').value = a.password;
+            document.getElementById('agentModal').classList.remove('hidden');
+        };
+
+        document.getElementById('agentForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('agentId').value;
+            const data = {
+                name: document.getElementById('aName').value,
+                phone: document.getElementById('aPhone').value,
+                commission: Number(document.getElementById('aComm').value),
+                password: document.getElementById('aPass').value,
+                role: 'agent',
+                createdBy: msoUid,
+                totalEarned: 0,
+                timestamp: serverTimestamp()
+            };
+
+            try {
+                if(id) await updateDoc(doc(db, "users", id), data);
+                else await addDoc(collection(db, "users"), data);
+                closeModal(); loadAgents();
+            } catch (e) { alert("Error!"); }
+        });
+
+        loadAgents();
+    </script>
+</body>
+</html>

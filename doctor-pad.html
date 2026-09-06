@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartConnect Rx - Pro Pad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; }
+        @media print { .no-print { display: none !important; } }
+        .waiting-card.active { border-color: #2563eb; background-color: #eff6ff; ring: 2px; ring-color: #2563eb; }
+        .tab-btn { flex: 1; padding: 10px; font-weight: bold; border-radius: 12px; transition: 0.3s; }
+        .tab-active { background: #2563eb; color: white; }
+        .quick-tag { @apply bg-slate-100 hover:bg-blue-100 text-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition; }
+        iframe { border-radius: 1.5rem; overflow: hidden; }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- Header (no-print) -->
+    <header class="bg-white border-b p-3 sticky top-0 z-50 no-print flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-3">
+            <button onclick="history.back()" class="text-slate-400">←</button>
+            <div class="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black">Rx</div>
+            <h1 class="text-sm font-black uppercase text-slate-800">SmartConnect <span class="text-blue-600">Virtual</span></h1>
+        </div>
+        <div id="queueCount" class="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full border border-emerald-100">০ জন সিরিয়ালে</div>
+    </header>
+
+    <main class="max-w-xl mx-auto p-4 no-print">
+        
+        <!-- ১. ভিডিও কল কন্ট্রোল (নতুন) -->
+        <div id="videoSection" class="hidden mb-6">
+            <div class="bg-rose-600 p-5 rounded-[2.5rem] shadow-xl flex justify-between items-center text-white mb-3">
+                <div class="flex items-center gap-3">
+                    <span class="animate-pulse w-3 h-3 bg-white rounded-full"></span>
+                    <div>
+                        <p class="text-[9px] font-black uppercase opacity-70">Virtual Consultation</p>
+                        <h4 class="text-sm font-bold uppercase tracking-widest">রোগীর সাথে যুক্ত হোন</h4>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleVideo(true)" id="joinBtn" class="bg-white text-rose-600 px-5 py-2 rounded-2xl font-black text-[10px] uppercase shadow-lg">Start Call</button>
+                    <button onclick="toggleVideo(false)" id="endBtn" class="hidden bg-slate-900 text-white px-5 py-2 rounded-2xl font-black text-[10px] uppercase shadow-lg">Minimize</button>
+                </div>
+            </div>
+            <!-- ভিডিও ফ্রেম -->
+            <div id="meetContainer" class="hidden h-80 w-full bg-black rounded-[2.5rem] shadow-2xl relative overflow-hidden mb-6">
+                <iframe id="jitsiFrame" src="" class="w-full h-full border-none"></iframe>
+            </div>
+        </div>
+
+        <!-- ২. সিরিয়াল লিস্ট -->
+        <div id="patientQueue" class="flex gap-3 overflow-x-auto pb-4 no-scrollbar mb-4"></div>
+
+        <!-- ৩. এডিটর এরিয়া -->
+        <div id="editorArea" class="opacity-30 pointer-events-none transition-all duration-500">
+            <div class="flex gap-2 mb-4">
+                <button onclick="switchTab('clinical')" id="tabClinical" class="tab-btn tab-active border">পরীক্ষা ও ভাইটাল</button>
+                <button onclick="switchTab('rx')" id="tabRx" class="tab-btn bg-white border">ওষুধ ও পরামর্শ</button>
+            </div>
+
+            <!-- সেকশন ১: ক্লিনিক্যাল -->
+            <div id="secClinical" class="space-y-4">
+                <div class="bg-white p-5 rounded-2xl border shadow-sm grid grid-cols-2 gap-4">
+                    <div class="col-span-2 text-[10px] font-black text-slate-400 uppercase">ভাইটাল তথ্য (সহকারী পূরণ করবে)</div>
+                    <input type="text" id="vBP" placeholder="BP" class="w-full bg-slate-50 p-2.5 rounded-xl font-bold border-none ring-1 ring-slate-100">
+                    <input type="text" id="vWt" placeholder="Weight" class="w-full bg-slate-50 p-2.5 rounded-xl font-bold border-none ring-1 ring-slate-100">
+                </div>
+                <div class="bg-white p-5 rounded-2xl border shadow-sm">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">ল্যাব টেস্ট</label>
+                    <div class="flex gap-2 mt-1"><input type="text" id="testInp" placeholder="টেস্টের নাম..." class="flex-1 bg-slate-50 p-2.5 rounded-xl border-none"><button onclick="addTest()" class="bg-slate-900 text-white px-4 rounded-xl">+</button></div>
+                    <div id="testList" class="space-y-2 mt-3"></div>
+                </div>
+            </div>
+
+            <!-- সেকশন ২: Rx -->
+            <div id="secRx" class="hidden space-y-4">
+                <div class="bg-white p-5 rounded-2xl border shadow-sm">
+                    <input type="text" id="medSearch" oninput="searchMeds()" placeholder="ওষুধের নাম লিখুন..." class="w-full bg-blue-50 p-3.5 rounded-xl text-sm font-bold outline-none border-none ring-1 ring-blue-100">
+                    <div id="medResults" class="mt-3 space-y-1.5 max-h-60 overflow-y-auto"></div>
+                </div>
+                <div id="selectedMedsList" class="bg-white p-4 rounded-2xl border shadow-sm hidden">
+                    <div id="medDisplayArea" class="space-y-3"></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border shadow-sm">
+                    <textarea id="adviceInp" class="w-full bg-slate-50 p-4 rounded-xl text-sm font-medium outline-none h-24 border-none" placeholder="পরামর্শ এখানে লিখুন..."></textarea>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- বাটন এরিয়া -->
+    <div class="fixed bottom-0 inset-x-0 p-4 bg-white/90 backdrop-blur-md border-t no-print flex gap-3 shadow-2xl">
+        <button onclick="location.reload()" class="bg-slate-100 text-slate-500 px-6 py-4 rounded-2xl font-bold text-xs uppercase">রিসেট</button>
+        <button onclick="saveAndPrint()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-blue-200">সেভ ও সম্পূর্ণ করুন</button>
+    </div>
+
+    <!-- ডোজ সেট মডাল -->
+    <div id="doseModal" class="hidden fixed inset-0 bg-slate-900/80 z-[100] flex items-center justify-center p-6 no-print backdrop-blur-md">
+        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl">
+            <h3 id="mMedName" class="text-lg font-black text-slate-800 mb-6 text-center">ওষুধের ডোজ</h3>
+            <div class="space-y-4">
+                <input type="text" id="mDose" value="১+০+১" class="w-full bg-slate-50 p-3 rounded-xl font-bold ring-1 ring-slate-100 outline-none">
+                <input type="text" id="mDur" value="৭ দিন" class="w-full bg-slate-50 p-3 rounded-xl font-bold ring-1 ring-slate-100 outline-none">
+                <select id="mTime" class="w-full bg-slate-50 p-3 rounded-xl font-bold ring-1 ring-slate-100 outline-none"><option value="খাবার আগে">খাবার আগে</option><option value="খাবার পরে" selected>খাবার পরে</option></select>
+                <div class="flex gap-3 pt-4"><button onclick="closeDoseModal()" class="flex-1 py-3 font-bold text-slate-400 uppercase text-xs">বাতিল</button><button onclick="addMedToPad()" class="flex-[2] bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg uppercase text-xs">যুক্ত করুন</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { doc, getDoc, collection, query, where, onSnapshot, updateDoc, addDoc, serverTimestamp, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const docId = urlParams.get('docId');
+        let currentPatient = null;
+        let allMeds = [];
+        let selectedMeds = [];
+        let selectedTests = [];
+        let tempMed = null;
+
+        async function init() {
+            if (!docId) return;
+
+            // সিরিয়াল লিস্ট লোড
+            const q = query(collection(db, "patient_queue"), where("doctorId", "==", docId), where("status", "in", ["waiting", "inside"]));
+            onSnapshot(q, (snapshot) => {
+                const list = document.getElementById('patientQueue');
+                document.getElementById('queueCount').innerText = snapshot.size + " জন সিরিয়ালে";
+                list.innerHTML = "";
+                
+                snapshot.forEach(d => {
+                    const p = d.data();
+                    const activeClass = (currentPatient && currentPatient.id === d.id) ? 'active ring-2 ring-blue-500' : '';
+                    list.innerHTML += `
+                        <div onclick="selectPatient('${d.id}')" class="waiting-card flex-shrink-0 bg-white border p-4 rounded-3xl w-40 cursor-pointer relative transition-all ${activeClass}">
+                            <h4 class="text-xs font-black truncate text-slate-800">${p.name}</h4>
+                            <p class="text-[9px] text-slate-400 font-bold mt-1 uppercase">${p.age}Y | ${p.phone.slice(-5)}</p>
+                        </div>`;
+                });
+            });
+
+            const mSnap = await getDocs(collection(db, "medicines"));
+            mSnap.forEach(d => allMeds.push({ id: d.id, ...d.data() }));
+        }
+
+        window.selectPatient = async (id) => {
+            const pSnap = await getDoc(doc(db, "patient_queue", id));
+            currentPatient = { id: pSnap.id, ...pSnap.data() };
+
+            await updateDoc(doc(db, "patient_queue", id), { status: 'inside' });
+            document.getElementById('editorArea').classList.remove('opacity-30', 'pointer-events-none');
+            document.getElementById('videoSection').classList.remove('hidden');
+
+            document.getElementById('vBP').value = currentPatient.vitals?.bp || "";
+            document.getElementById('vWt').value = currentPatient.vitals?.wt || "";
+            
+            // Jitsi Meet Link Setup
+            const meetLink = `https://meet.jit.si/SmartConnect_Consultation_${docId}`;
+            document.getElementById('jitsiFrame').src = meetLink;
+        };
+
+        window.toggleVideo = (show) => {
+            document.getElementById('meetContainer').classList.toggle('hidden', !show);
+            document.getElementById('joinBtn').classList.toggle('hidden', show);
+            document.getElementById('endBtn').classList.toggle('hidden', !show);
+        };
+
+        window.switchTab = (tab) => {
+            document.getElementById('secClinical').classList.toggle('hidden', tab !== 'clinical');
+            document.getElementById('secRx').classList.toggle('hidden', tab !== 'rx');
+            document.getElementById('tabClinical').classList.toggle('tab-active', tab === 'clinical');
+            document.getElementById('tabRx').classList.toggle('tab-active', tab === 'rx');
+        };
+
+        window.searchMeds = () => {
+            const term = document.getElementById('medSearch').value.toLowerCase();
+            const res = document.getElementById('medResults');
+            res.innerHTML = "";
+            if(term.length < 2) return;
+            allMeds.filter(m => m.name.toLowerCase().includes(term)).slice(0, 8).forEach(m => {
+                res.innerHTML += `<div onclick="openDoseModal('${m.id}')" class="bg-white p-3 rounded-xl border flex justify-between items-center cursor-pointer">
+                    <p class="text-xs font-black text-slate-800">${m.name} <span class="text-[9px] text-blue-500">${m.strength || ''}</span></p>
+                </div>`;
+            });
+        };
+
+        window.openDoseModal = (id) => {
+            tempMed = allMeds.find(m => m.id === id);
+            document.getElementById('mMedName').innerText = tempMed.name;
+            document.getElementById('doseModal').classList.remove('hidden');
+        };
+
+        window.closeDoseModal = () => document.getElementById('doseModal').classList.add('hidden');
+
+        window.addMedToPad = () => {
+            selectedMeds.push({ ...tempMed, dose: document.getElementById('mDose').value, duration: document.getElementById('mDur').value, time: document.getElementById('mTime').value });
+            renderMeds(); closeDoseModal();
+            document.getElementById('medSearch').value = ""; document.getElementById('medResults').innerHTML = "";
+        };
+
+        function renderMeds() {
+            document.getElementById('selectedMedsList').classList.toggle('hidden', selectedMeds.length === 0);
+            document.getElementById('medDisplayArea').innerHTML = selectedMeds.map((m, i) => `
+                <div class="flex items-center justify-between border-b border-slate-50 pb-2">
+                    <div><p class="text-xs font-black">${m.name}</p><p class="text-[10px] text-slate-400 italic">${m.dose} -- ${m.duration}</p></div>
+                    <button onclick="selectedMeds.splice(${i}, 1); renderMeds();" class="text-rose-400 text-sm">❌</button>
+                </div>`).join('');
+        }
+
+        window.addTest = () => {
+            const val = document.getElementById('testInp').value;
+            if(!val) return;
+            selectedTests.push(val);
+            document.getElementById('testInp').value = "";
+            document.getElementById('testList').innerHTML = selectedTests.map((t, i) => `<div class="bg-slate-50 p-2 rounded-lg text-xs font-bold flex justify-between"><span>${t}</span><span onclick="selectedTests.splice(${i}, 1); addTest();" class="text-rose-400">×</span></div>`).join('');
+        };
+
+        window.saveAndPrint = async () => {
+            if(!currentPatient) return alert("রোগী সিলেক্ট করুন!");
+            try {
+                // ১. প্রেসক্রিপশন সেভ
+                await addDoc(collection(db, "prescriptions"), {
+                    patientId: currentPatient.id, doctorId: docId, doctorName: "ডাঃ ", // এটি ডক্টর ডাটা থেকে আনা উচিত
+                    patientName: currentPatient.name, patientPhone: currentPatient.phone,
+                    medicines: selectedMeds, tests: selectedTests, advice: document.getElementById('adviceInp').value,
+                    vitals: { bp: document.getElementById('vBP').value, wt: document.getElementById('vWt').value },
+                    timestamp: serverTimestamp()
+                });
+                // ২. কিউ আপডেট
+                await updateDoc(doc(db, "patient_queue", currentPatient.id), { status: 'completed' });
+                alert("সাফল্যের সাথে সেভ হয়েছে! সহকারী এখন এটি প্রিন্ট করতে পারবেন।");
+                location.reload();
+            } catch (e) { alert("Save Error!"); }
+        };
+
+        init();
+    </script>
+</body>
+</html>

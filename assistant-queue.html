@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>আজকের সিরিয়াল - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .status-badge { @apply px-2 py-1 rounded-full text-[9px] font-black uppercase; }
+        .waiting { @apply bg-orange-100 text-orange-600 border border-orange-200; }
+        .inside { @apply bg-blue-100 text-blue-600 border border-blue-200 animate-pulse; }
+        .done { @apply bg-emerald-100 text-emerald-600 border border-emerald-200; }
+        .paid { @apply bg-emerald-500 text-white; }
+        .unpaid { @apply bg-slate-200 text-slate-500; }
+    </style>
+</head>
+<body class="pb-10">
+
+    <!-- হেডার -->
+    <header class="bg-white border-b sticky top-0 z-50 p-4 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-3">
+            <button onclick="history.back()" class="text-slate-400 font-bold">←</button>
+            <div>
+                <h1 class="text-sm font-black text-slate-800 uppercase tracking-tight">সিরিয়াল ম্যানেজমেন্ট</h1>
+                <p id="docName" class="text-[9px] text-indigo-600 font-bold uppercase">লোড হচ্ছে...</p>
+            </div>
+        </div>
+        <div id="totalCount" class="bg-indigo-600 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase">০ জন</div>
+    </header>
+
+    <main class="max-w-md mx-auto p-4">
+        <div id="queueList" class="space-y-3">
+            <div class="text-center py-20 text-slate-300 italic text-sm">সিরিয়াল লোড হচ্ছে...</div>
+        </div>
+    </main>
+
+    <!-- স্ট্যাটাস আপডেট মডাল -->
+    <div id="statusModal" class="hidden fixed inset-0 bg-slate-900/60 z-[60] flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl">
+            <h3 class="text-sm font-black text-slate-800 mb-6 text-center uppercase tracking-widest">অবস্থা পরিবর্তন</h3>
+            <div class="grid grid-cols-1 gap-3">
+                <button onclick="updateStatus('waiting')" class="bg-orange-50 text-orange-600 py-4 rounded-2xl font-bold text-xs uppercase border border-orange-100">অপেক্ষমাণ (Waiting)</button>
+                <button onclick="updateStatus('inside')" class="bg-blue-50 text-blue-600 py-4 rounded-2xl font-bold text-xs uppercase border border-blue-100">ডাক্তারের রুমে (Inside)</button>
+                <button onclick="updateStatus('completed')" class="bg-emerald-50 text-emerald-600 py-4 rounded-2xl font-bold text-xs uppercase border border-emerald-100">দেখা শেষ (Done)</button>
+            </div>
+            <button onclick="closeModal()" class="w-full mt-4 text-slate-400 font-bold text-[10px] uppercase">বাতিল</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const docId = urlParams.get('docId');
+        let activePatientId = null;
+
+        async function init() {
+            if (!docId) return;
+            const dSnap = await getDoc(doc(db, "doctors", docId));
+            if(dSnap.exists()) document.getElementById('docName').innerText = dSnap.data().name;
+            loadRealtimeQueue();
+        }
+
+        function loadRealtimeQueue() {
+            const today = new Date().toLocaleDateString();
+            const q = query(collection(db, "patient_queue"), where("doctorId", "==", docId));
+
+            onSnapshot(q, (snapshot) => {
+                const listArea = document.getElementById('queueList');
+                let currentQueue = [];
+                
+                snapshot.forEach(d => {
+                    const data = d.data();
+                    const pDate = data.timestamp?.toDate().toLocaleDateString();
+                    if(pDate === today) currentQueue.push({ id: d.id, ...data });
+                });
+
+                currentQueue.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0));
+                document.getElementById('totalCount').innerText = currentQueue.length + " জন";
+
+                if(currentQueue.length === 0) {
+                    listArea.innerHTML = '<div class="bg-white p-10 rounded-[2.5rem] text-center text-slate-400 italic text-xs">আজ কোনো সিরিয়াল নেই</div>';
+                    return;
+                }
+
+                listArea.innerHTML = currentQueue.map((p, index) => {
+                    const statusClass = p.status === 'waiting' ? 'waiting' : (p.status === 'inside' ? 'inside' : 'done');
+                    const statusLabel = p.status === 'waiting' ? 'অপেক্ষমাণ' : (p.status === 'inside' ? 'ভিতরে আছেন' : 'সম্পন্ন');
+                    
+                    // ভিডিও কল লিঙ্ক (Jitsi Meet)
+                    const videoLink = `https://meet.jit.si/SmartConnect_Consultation_${docId}`;
+
+                    return `
+                    <div class="bg-white p-5 rounded-[2rem] border border-white shadow-sm flex flex-col gap-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex gap-3">
+                                <span class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-sm">${index + 1}</span>
+                                <div>
+                                    <h4 class="text-sm font-black text-slate-800">${p.name}</h4>
+                                    <p class="text-[10px] font-bold text-slate-400">${p.phone} | ${p.age} বছর</p>
+                                </div>
+                            </div>
+                            <span onclick="openStatusModal('${p.id}')" class="status-badge ${statusClass} cursor-pointer">${statusLabel}</span>
+                        </div>
+                        
+                        <!-- স্মার্ট অ্যাকশন বাটনসমূহ -->
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-50">
+                            ${p.status === 'inside' ? `
+                                <a href="${videoLink}" target="_blank" class="col-span-2 bg-rose-600 text-white py-3 rounded-xl font-black text-[10px] text-center uppercase shadow-lg shadow-rose-100 flex items-center justify-center gap-2">
+                                    📹 ভিডিও কল শুরু করুন
+                                </a>
+                            ` : ''}
+
+                            ${p.status === 'completed' ? `
+                                <button onclick="printRx('${p.id}')" class="col-span-2 bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-2">
+                                    🖨️ প্রেসক্রিপশন প্রিন্ট
+                                </button>
+                            ` : ''}
+                            
+                            <button onclick="togglePayment('${p.id}', '${p.payment}')" class="text-[9px] font-black uppercase py-2 rounded-xl border ${p.payment === 'paid' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-slate-400 border-slate-100'}">
+                                ${p.payment === 'paid' ? '✓ Paid' : '৳ Unpaid'}
+                            </button>
+                            
+                            <button onclick="deleteEntry('${p.id}')" class="text-[9px] font-black uppercase py-2 rounded-xl bg-slate-50 text-rose-300">মুছে ফেলুন</button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            });
+        }
+
+        window.togglePayment = async (id, current) => {
+            await updateDoc(doc(db, "patient_queue", id), { payment: current === 'paid' ? 'unpaid' : 'paid' });
+        };
+
+        window.openStatusModal = (id) => { activePatientId = id; document.getElementById('statusModal').classList.remove('hidden'); };
+        window.closeModal = () => document.getElementById('statusModal').classList.add('hidden');
+
+        window.updateStatus = async (newStatus) => {
+            if(!activePatientId) return;
+            await updateDoc(doc(db, "patient_queue", activePatientId), { status: newStatus });
+            closeModal();
+        };
+
+        window.deleteEntry = async (id) => {
+            if(confirm("মুছে ফেলতে চান?")) await deleteDoc(doc(db, "patient_queue", id));
+        };
+
+        window.printRx = (patientId) => {
+            // প্রেসক্রিপশন আইডি খুঁজে বের করার জন্য সেশন বা সরাসরি লিঙ্ক ব্যবহার
+            window.location.href = `print-rx.html?patientId=${patientId}&docId=${docId}`;
+        };
+
+        init();
+    </script>
+</body>
+</html>

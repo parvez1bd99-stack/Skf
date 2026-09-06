@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SmartConnect - অর্ডার প্লেস</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        
+        .product-card { 
+            transition: all 0.2s ease-in-out;
+            border: 1px solid #f1f5f9;
+        }
+        
+        .product-card.active { 
+            border-color: #3b82f6; 
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+        }
+
+        .sticky-search { 
+            position: sticky; 
+            top: 0; 
+            z-index: 50; 
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(12px); 
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .qty-input { 
+            width: 38px; 
+            text-align: center; 
+            font-weight: 800; 
+            background: transparent; 
+            border: none; 
+            outline: none; 
+            font-size: 15px;
+            color: #1e293b;
+        }
+
+        /* স্লিম ফুটার শ্যাডো */
+        .footer-shadow {
+            box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* প্লাস বাটনে ক্লিক ইফেক্ট */
+        .btn-plus:active { transform: scale(0.9); }
+    </style>
+</head>
+<body class="pb-32">
+
+    <!-- ১. স্লিম হেডার ও সার্চ -->
+    <div class="sticky-search px-4 py-4">
+        <div class="flex justify-between items-center mb-4 px-1">
+            <button onclick="history.back()" class="text-blue-600 font-bold flex items-center gap-1">
+                <span class="text-xl">←</span>
+                <span class="text-xs uppercase font-black">Back</span>
+            </button>
+            <h1 class="text-sm font-black text-slate-800 uppercase tracking-widest">Order List</h1>
+            <div class="w-10"></div>
+        </div>
+        
+        <div class="relative">
+            <input type="text" id="searchInput" oninput="filterProducts()" placeholder="ওষুধ বা গ্রুপ লিখে খুঁজুন..." 
+                class="w-full bg-slate-100/50 border-none rounded-2xl py-3.5 pl-11 pr-4 outline-none focus:ring-2 ring-blue-500/20 text-sm font-medium transition-all">
+            <span class="absolute left-4 top-3.5 opacity-30">🔍</span>
+        </div>
+    </div>
+
+    <div class="p-4 max-w-md mx-auto">
+        <!-- ২. প্রোডাক্ট লিস্ট এরিয়া -->
+        <div id="productList" class="space-y-3">
+            <div class="p-20 text-center">
+                <div class="animate-spin inline-block w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                <p class="text-slate-400 italic text-[10px] font-bold uppercase tracking-widest">Loading Items...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ৩. স্লিম ফ্লোটিং ফুটার (মিনিমাইজড ডিজাইন) -->
+    <div id="cartFooter" class="hidden fixed bottom-6 left-4 right-4 z-50">
+        <div class="max-w-md mx-auto bg-slate-900/95 backdrop-blur-md rounded-[1.5rem] p-2.5 flex items-center justify-between border border-slate-700/50 shadow-2xl">
+            <!-- বাম দিক: টাকা ও আইটেম -->
+            <div class="flex flex-col pl-4">
+                <div class="flex items-baseline gap-1.5">
+                    <span id="cartTotal" class="text-xl font-black text-emerald-400 tracking-tighter">৳০</span>
+                    <span id="cartCount" class="text-[10px] font-bold text-slate-400">(০)</span>
+                </div>
+                <p class="text-[7px] text-slate-500 font-black uppercase tracking-[0.2em] leading-none">Estimate Bill</p>
+            </div>
+
+            <!-- ডান দিক: বাটন -->
+            <button onclick="confirmOrder()" id="confirmBtn" 
+                class="bg-blue-600 text-white px-8 py-3.5 rounded-[1.2rem] font-black uppercase tracking-widest text-[10px] shadow-lg shadow-blue-600/20 active:scale-95 transition-all">
+                অর্ডার দিন
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, getDocs, addDoc, getDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const chemistId = urlParams.get('id');
+
+        let allProducts = [];
+        let cart = {};
+        let chemistCategory = "1";
+
+        async function init() {
+            if(!chemistId) return window.location.href = 'qr-scanner.html';
+
+            try {
+                const chemistSnap = await getDoc(doc(db, "users", chemistId));
+                if(chemistSnap.exists()) {
+                    chemistCategory = chemistSnap.data().category || "1";
+                }
+
+                const medSnap = await getDocs(query(collection(db, "medicines"), orderBy("name", "asc")));
+                allProducts = [];
+                
+                medSnap.forEach((doc) => {
+                    let med = { id: doc.id, ...doc.data() };
+                    med.price = med[`price${chemistCategory}`] || med.price1;
+                    allProducts.push(med);
+                });
+
+                renderProducts(allProducts);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('productList').innerHTML = `<p class="text-center text-red-500 p-10">Data Load Error!</p>`;
+            }
+        }
+
+        function renderProducts(products) {
+            const listDiv = document.getElementById('productList');
+            listDiv.innerHTML = "";
+
+            if(products.length === 0) {
+                listDiv.innerHTML = `<div class="text-center p-20 text-slate-400 italic text-xs">No Medicine Found!</div>`;
+                return;
+            }
+
+            products.forEach(p => {
+                const qty = cart[p.id] ? cart[p.id].qty : 0;
+                const isActive = qty > 0 ? 'active' : '';
+
+                listDiv.innerHTML += `
+                    <div id="card-${p.id}" class="product-card bg-white p-4 rounded-[1.8rem] flex justify-between items-center ${isActive}">
+                        <div class="flex-1 min-w-0 pr-3">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <h3 class="text-[15px] font-bold text-slate-800 leading-tight truncate">${p.name}</h3>
+                                ${p.strength ? `<span class="bg-blue-50 text-blue-600 text-[9px] font-black px-1.5 py-0.5 rounded-md">${p.strength}</span>` : ''}
+                            </div>
+                            <p class="text-[10px] text-slate-400 font-medium truncate italic uppercase tracking-tighter">${p.generic || 'Generic'}</p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-[13px] font-black text-slate-700">৳${p.price}</span>
+                                <span class="text-[7px] font-black text-blue-300 uppercase tracking-widest">Cat-${chemistCategory}</span>
+                            </div>
+                        </div>
+
+                        <!-- কিউটিওয়াই কন্ট্রোল (মিনিমাইজড) -->
+                        <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-100">
+                            <button onclick="updateQty('${p.id}', -1)" class="w-8 h-8 flex items-center justify-center bg-white rounded-xl text-slate-400 font-bold shadow-sm">-</button>
+                            
+                            <input type="number" 
+                                id="qty-${p.id}" 
+                                value="${qty}" 
+                                oninput="manualUpdateQty('${p.id}', this.value)"
+                                class="qty-input"
+                                inputmode="numeric"
+                                placeholder="0">
+
+                            <button onclick="updateQty('${p.id}', 1)" class="btn-plus w-8 h-8 flex items-center justify-center bg-blue-600 rounded-xl text-white font-bold shadow-md shadow-blue-200 transition-all">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        window.updateQty = (pid, change) => {
+            const input = document.getElementById(`qty-${pid}`);
+            let currentVal = parseInt(input.value) || 0;
+            let newVal = currentVal + change;
+            
+            if (newVal < 0) newVal = 0;
+            input.value = newVal;
+            
+            manualUpdateQty(pid, newVal);
+        };
+
+        window.manualUpdateQty = (pid, value) => {
+            const product = allProducts.find(p => p.id === pid);
+            const card = document.getElementById(`card-${pid}`);
+            const qty = parseInt(value) || 0;
+
+            if (qty > 0) {
+                cart[pid] = { name: product.name, price: product.price, strength: product.strength || "", qty: qty };
+                card.classList.add('active');
+            } else {
+                delete cart[pid];
+                card.classList.remove('active');
+            }
+
+            updateFooter();
+        };
+
+        function updateFooter() {
+            const footer = document.getElementById('cartFooter');
+            const items = Object.values(cart);
+            let total = 0, count = 0;
+
+            items.forEach(i => {
+                total += i.price * i.qty;
+                count += i.qty;
+            });
+
+            if (count > 0) {
+                footer.classList.remove('hidden');
+                document.getElementById('cartTotal').innerText = "৳" + total.toLocaleString('bn-BD');
+                document.getElementById('cartCount').innerText = `(${count})`;
+            } else {
+                footer.classList.add('hidden');
+            }
+        }
+
+        window.confirmOrder = async () => {
+            const btn = document.getElementById('confirmBtn');
+            btn.innerText = "WAIT...";
+            btn.disabled = true;
+
+            const items = Object.values(cart);
+            let total = 0;
+            items.forEach(i => total += i.price * i.qty);
+
+            try {
+                await addDoc(collection(db, "orders"), {
+                    chemistId: chemistId,
+                    items: items,
+                    totalAmount: total,
+                    status: "Pending",
+                    priceCategory: chemistCategory,
+                    timestamp: serverTimestamp()
+                });
+
+                alert("অর্ডার সফল হয়েছে!");
+                window.location.href = `chemist-dashboard.html?id=${chemistId}`;
+            } catch (error) {
+                alert("ত্রুটি হয়েছে!");
+                btn.innerText = "অর্ডার দিন";
+                btn.disabled = false;
+            }
+        };
+
+        window.filterProducts = () => {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allProducts.filter(p => 
+                p.name.toLowerCase().includes(term) || 
+                p.generic.toLowerCase().includes(term) ||
+                (p.group && p.group.toLowerCase().includes(term))
+            );
+            renderProducts(filtered);
+        };
+
+        init();
+    </script>
+</body>
+</html>

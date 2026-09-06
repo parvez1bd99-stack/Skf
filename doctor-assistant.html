@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>অ্যাসিস্ট্যান্ট ম্যানেজমেন্ট - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; }
+        .qr-card-ast { background: linear-gradient(135deg, #4f46e5 0%, #312e81 100%); }
+        .modal-anim { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <div class="bg-indigo-800 text-white px-6 py-8 rounded-b-[3rem] shadow-xl mb-6">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <button onclick="history.back()" class="text-indigo-200 font-bold">← ব্যাক</button>
+            <h1 class="text-xl font-black italic">সহকারী (Assistant) লিস্ট</h1>
+            <div class="w-8"></div>
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        <button onclick="openModal()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg mb-8 active:scale-95 transition">
+            👤 নতুন অ্যাসিস্ট্যান্ট যোগ করুন
+        </button>
+
+        <div id="assistantList" class="space-y-4">
+            <div class="p-20 text-center text-gray-300 italic text-xs">অ্যাসিস্ট্যান্ট লোড হচ্ছে...</div>
+        </div>
+    </div>
+
+    <!-- অ্যাসিস্ট্যান্ট অ্যাড মোডাল -->
+    <div id="astModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl modal-anim overflow-y-auto max-h-[90vh]">
+            <h2 id="modalTitle" class="text-lg font-black text-slate-800 mb-6 border-b pb-2">সহকারী তথ্য ফরম</h2>
+            <form id="astForm" class="space-y-4">
+                <input type="hidden" id="astId">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">সহকারীর নাম</label>
+                    <input type="text" id="aName" placeholder="নাম লিখুন" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-indigo-500 text-sm">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ডাক্তার নির্বাচন করুন</label>
+                    <select id="docSelect" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-indigo-500 text-sm font-bold">
+                        <option value="">ডাক্তার সিলেক্ট করুন</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ফোন (লগইন আইডি)</label>
+                        <input type="tel" id="aPhone" placeholder="মোবাইল নম্বর" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-indigo-500 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">পাসওয়ার্ড</label>
+                        <input type="text" id="aPass" placeholder="******" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-indigo-500 text-sm">
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal()" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-xl font-bold text-xs uppercase">বাতিল</button>
+                    <button type="submit" id="saveBtn" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- QR কার্ড মোডাল -->
+    <div id="qrModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 z-50">
+        <div class="max-w-xs w-full text-center">
+            <div id="printableCard" class="qr-card-ast p-8 rounded-[2.5rem] border-2 border-white/20 shadow-2xl">
+                <h2 class="text-2xl font-black italic text-white mb-2 uppercase tracking-tighter">SmartConnect</h2>
+                <p class="text-[8px] text-indigo-200 font-bold uppercase tracking-[0.2em] mb-4">Assistant ID Card</p>
+                <div class="bg-white p-4 rounded-3xl inline-block mb-6 shadow-xl" id="qrcode"></div>
+                <h3 id="cardAstName" class="text-xl font-black text-white leading-tight">নাম</h3>
+                <p id="cardDocName" class="text-[10px] text-indigo-300 font-bold uppercase mt-1">ডাক্তার: ---</p>
+            </div>
+            <button onclick="document.getElementById('qrModal').classList.add('hidden')" class="mt-6 text-white/50 text-xs font-bold uppercase underline">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, addDoc, updateDoc, doc, query, where, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+        const SECRET_KEY = "APON-SECURE-V1";
+        let allDoctors = [];
+        let allAssistants = [];
+
+        async function init() {
+            try {
+                // ১. ডাক্তারদের লিস্ট লোড করা ড্রপডাউন এর জন্য
+                const dSnap = await getDocs(query(collection(db, "doctors"), orderBy("name", "asc")));
+                const select = document.getElementById('docSelect');
+                dSnap.forEach(d => {
+                    allDoctors.push({id: d.id, ...d.data()});
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.innerText = d.data().name;
+                    select.appendChild(opt);
+                });
+                loadAssistants();
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadAssistants() {
+            const list = document.getElementById('assistantList');
+            try {
+                const q = query(collection(db, "users"), where("role", "==", "assistant"));
+                const snap = await getDocs(q);
+                list.innerHTML = "";
+                allAssistants = [];
+
+                if(snap.empty) {
+                    list.innerHTML = `<p class="text-center text-gray-400 py-10">কোনো সহকারী পাওয়া যায়নি।</p>`;
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const ast = { id: d.id, ...d.data() };
+                    allAssistants.push(ast);
+                    const docName = allDoctors.find(x => x.id === ast.doctorId)?.name || "অজানা ডাক্তার";
+                    
+                    list.innerHTML += `
+                        <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-white flex justify-between items-center transition active:scale-95">
+                            <div>
+                                <h3 class="text-sm font-black text-slate-800 leading-none mb-1">${ast.name}</h3>
+                                <p class="text-[9px] text-indigo-600 font-bold uppercase italic">ডাক্তার: ${docName}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="showQR('${ast.doctorId}', '${ast.name}', '${docName}')" class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100">📷</button>
+                                <button onclick="editAssistant('${ast.id}')" class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center border">✏️</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        window.openModal = () => {
+            document.getElementById('astModal').classList.remove('hidden');
+            document.getElementById('astForm').reset();
+            document.getElementById('astId').value = "";
+            document.getElementById('modalTitle').innerText = "নতুন সহকারী যোগ করুন";
+        };
+
+        window.closeModal = () => document.getElementById('astModal').classList.add('hidden');
+
+        window.editAssistant = (id) => {
+            const ast = allAssistants.find(a => a.id === id);
+            document.getElementById('astId').value = ast.id;
+            document.getElementById('aName').value = ast.name;
+            document.getElementById('docSelect').value = ast.doctorId;
+            document.getElementById('aPhone').value = ast.phone;
+            document.getElementById('aPass').value = ast.password;
+            document.getElementById('modalTitle').innerText = "তথ্য আপডেট করুন";
+            document.getElementById('astModal').classList.remove('hidden');
+        };
+
+        document.getElementById('astForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerText = "সেভ হচ্ছে...";
+
+            const id = document.getElementById('astId').value;
+            const data = {
+                name: document.getElementById('aName').value,
+                doctorId: document.getElementById('docSelect').value,
+                phone: document.getElementById('aPhone').value,
+                password: document.getElementById('aPass').value,
+                role: 'assistant',
+                timestamp: serverTimestamp()
+            };
+
+            try {
+                if(id) await updateDoc(doc(db, "users", id), data);
+                else await addDoc(collection(db, "users"), data);
+                
+                alert("সহকারীর তথ্য সফলভাবে সংরক্ষিত হয়েছে!");
+                closeModal(); loadAssistants();
+            } catch (err) {
+                alert("ত্রুটি: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "সেভ করুন";
+            }
+        });
+
+        window.showQR = (docId, astName, docName) => {
+            document.getElementById('qrModal').classList.remove('hidden');
+            document.getElementById('cardAstName').innerText = astName;
+            document.getElementById('cardDocName').innerText = "Assisting: " + docName;
+            
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = "";
+            
+            // কিউআর ডাটা: অ্যাসিস্ট্যান্ট স্ক্যান করলে ডাক্তারের আইডিতে নিয়ে যাবে
+            const qrData = btoa(`${SECRET_KEY}:assistant:${docId}`);
+            
+            new QRCode(qrContainer, { 
+                text: qrData, 
+                width: 160, 
+                height: 160, 
+                colorDark: "#312e81", 
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H 
+            });
+        };
+
+        init();
+    </script>
+</body>
+</html>

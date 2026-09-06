@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ডাক্তার ম্যানেজমেন্ট - SmartConnect</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
+        .qr-card-doc { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); }
+        .modal-anim { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body class="pb-20">
+
+    <div class="bg-blue-900 text-white px-6 py-8 rounded-b-[3rem] shadow-xl mb-6">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <button onclick="history.back()" class="text-blue-200 font-bold">← ব্যাক</button>
+            <h1 class="text-xl font-black italic">ডক্টর লিস্ট ও কার্ড</h1>
+            <div class="w-8"></div>
+        </div>
+    </div>
+
+    <div class="px-4 max-w-md mx-auto">
+        <button onclick="openModal()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg mb-8 active:scale-95 transition">
+            👨‍⚕️ নতুন ডাক্তার যোগ করুন
+        </button>
+
+        <!-- সার্চ বার -->
+        <div class="mb-6">
+            <input type="text" id="searchInput" oninput="filterDoctors()" placeholder="নাম বা ডিগ্রি দিয়ে খুঁজুন..." class="w-full bg-white border-none rounded-2xl py-3 px-6 shadow-sm outline-none text-sm">
+        </div>
+
+        <div id="doctorList" class="space-y-4">
+            <div class="p-20 text-center text-gray-300 italic text-xs">ডাক্তার তালিকা লোড হচ্ছে...</div>
+        </div>
+    </div>
+
+    <!-- ডক্টর অ্যাড/এডিট মোডাল -->
+    <div id="doctorModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl modal-anim overflow-y-auto max-h-[90vh]">
+            <h2 id="modalTitle" class="text-lg font-black text-slate-800 mb-6 border-b pb-2">ডাক্তারের তথ্য ফরম</h2>
+            <form id="doctorForm" class="space-y-4">
+                <input type="hidden" id="dId">
+                
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ডাক্তারের নাম ও ডিগ্রি</label>
+                    <input type="text" id="dName" placeholder="উদা: Dr. Rahim, MBBS" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">বিশেষজ্ঞ (Specialty)</label>
+                    <input type="text" id="dSpecial" placeholder="উদা: Medicine Specialist" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">চেম্বারের ঠিকানা</label>
+                    <input type="text" id="dChamber" placeholder="হসপিটাল বা চেম্বার লোকেশন" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm">
+                </div>
+
+                <!-- নতুন ফিল্ড: দিন এবং সময় -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">চেম্বারের দিনসমূহ</label>
+                        <input type="text" id="dDays" placeholder="শনি - বৃহস্পতি" class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">রোগী দেখার সময়</label>
+                        <input type="text" id="dTime" placeholder="৫টা - ১০টা" class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">ফোন নম্বর (Login ID)</label>
+                        <input type="tel" id="dPhone" placeholder="017XXXXXXXX" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">পাসওয়ার্ড</label>
+                        <input type="text" id="dPass" placeholder="******" required class="w-full bg-gray-50 border-2 rounded-xl p-3 outline-none focus:border-blue-500 text-sm font-bold">
+                    </div>
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-100">
+                    <label class="text-[10px] font-black text-blue-600 uppercase ml-1">অনারিয়াম (৳ / প্রতি ভিজিট)</label>
+                    <input type="number" id="dFee" value="20" required class="w-full bg-white border-2 border-blue-100 rounded-xl p-2.5 mt-1 outline-none text-sm font-bold text-blue-700">
+                </div>
+
+                <div class="flex gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeModal()" class="flex-1 bg-gray-100 text-gray-400 py-3 rounded-xl font-bold text-xs uppercase">বাতিল</button>
+                    <button type="submit" id="saveBtn" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-xs uppercase shadow-lg">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- QR কার্ড মোডাল -->
+    <div id="qrModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 z-50">
+        <div class="max-w-xs w-full text-center">
+            <div id="printableCard" class="qr-card-doc p-8 rounded-[2.5rem] border-2 border-white/20 shadow-2xl">
+                <h2 class="text-3xl font-black italic text-blue-400 mb-2 uppercase tracking-tighter leading-none">SK+F</h2>
+                <p class="text-[8px] text-blue-200 font-bold uppercase tracking-[0.2em] mb-4">Doctor Smart ID</p>
+                <div class="bg-white p-4 rounded-3xl inline-block mb-6 shadow-xl" id="qrcode"></div>
+                <h3 id="cardDocName" class="text-xl font-black text-white leading-tight">নাম</h3>
+                <p id="cardDocSpecial" class="text-[9px] text-blue-300 font-bold uppercase mt-1">বিশেষজ্ঞ</p>
+            </div>
+            <button onclick="document.getElementById('qrModal').classList.add('hidden')" class="mt-6 text-white/50 text-xs font-bold uppercase underline">বন্ধ করুন</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, checkAccess } from './firebase-config.js';
+        import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+        checkAccess('mso');
+        const SECRET_KEY = "APON-SECURE-V1";
+        let allDoctors = [];
+
+        async function loadDoctors() {
+            try {
+                const snap = await getDocs(query(collection(db, "doctors"), orderBy("timestamp", "desc")));
+                const list = document.getElementById('doctorList');
+                list.innerHTML = "";
+                allDoctors = [];
+                
+                if(snap.empty) {
+                    list.innerHTML = `<p class="text-center text-gray-400 py-10">কোনো ডাক্তার পাওয়া যায়নি।</p>`;
+                    return;
+                }
+
+                snap.forEach(d => {
+                    const docData = { id: d.id, ...d.data() };
+                    allDoctors.push(docData);
+                    renderCard(docData);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        function renderCard(docData) {
+            const list = document.getElementById('doctorList');
+            list.innerHTML += `
+                <div class="bg-white p-5 rounded-[2rem] shadow-sm border border-white flex justify-between items-center doctor-card-item">
+                    <div class="flex-1">
+                        <h3 class="text-sm font-black text-slate-800 leading-none mb-1 d-name">${docData.name}</h3>
+                        <p class="text-[9px] text-blue-600 font-bold uppercase d-special">${docData.degree}</p>
+                        <p class="text-[8px] text-gray-400 mt-1 uppercase font-bold">${docData.visitingDays || 'প্রতিদিন'} | ${docData.visitingTime || 'সময় দেয়া নেই'}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="showQR('${docData.id}', '${docData.name}', '${docData.degree}')" class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center border">📷</button>
+                        <button onclick="editDoctor('${docData.id}')" class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center border">✏️</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.openModal = () => {
+            document.getElementById('doctorModal').classList.remove('hidden');
+            document.getElementById('doctorForm').reset();
+            document.getElementById('dId').value = "";
+            document.getElementById('modalTitle').innerText = "নতুন ডাক্তার যোগ করুন";
+        };
+
+        window.closeModal = () => document.getElementById('doctorModal').classList.add('hidden');
+
+        window.editDoctor = (id) => {
+            const d = allDoctors.find(doc => doc.id === id);
+            document.getElementById('dId').value = d.id;
+            document.getElementById('dName').value = d.name;
+            document.getElementById('dSpecial').value = d.degree;
+            document.getElementById('dChamber').value = d.chamber;
+            document.getElementById('dPhone').value = d.phone;
+            document.getElementById('dPass').value = d.password;
+            document.getElementById('dFee').value = d.honorarium;
+            document.getElementById('dDays').value = d.visitingDays || "";
+            document.getElementById('dTime').value = d.visitingTime || "";
+            document.getElementById('modalTitle').innerText = "তথ্য আপডেট করুন";
+            document.getElementById('doctorModal').classList.remove('hidden');
+        };
+
+        document.getElementById('doctorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.innerText = "সেভ হচ্ছে...";
+
+            const id = document.getElementById('dId').value;
+            const data = {
+                name: document.getElementById('dName').value,
+                degree: document.getElementById('dSpecial').value,
+                chamber: document.getElementById('dChamber').value,
+                phone: document.getElementById('dPhone').value,
+                password: document.getElementById('dPass').value,
+                honorarium: Number(document.getElementById('dFee').value),
+                visitingDays: document.getElementById('dDays').value,
+                visitingTime: document.getElementById('dTime').value,
+                timestamp: serverTimestamp()
+            };
+
+            try {
+                if(id) await updateDoc(doc(db, "doctors", id), data);
+                else await addDoc(collection(db, "doctors"), { ...data, totalEarned: 0 });
+                
+                alert("সাফল্যের সাথে সংরক্ষিত হয়েছে!");
+                closeModal(); 
+                loadDoctors();
+            } catch (err) {
+                alert("ভুল হয়েছে: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "সেভ করুন";
+            }
+        });
+
+        window.showQR = (id, name, special) => {
+            document.getElementById('qrModal').classList.remove('hidden');
+            document.getElementById('cardDocName').innerText = name;
+            document.getElementById('cardDocSpecial').innerText = special;
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, { 
+                text: btoa(`${SECRET_KEY}:doctor:${id}`), 
+                width: 180, 
+                height: 180, 
+                colorDark: "#1e3a8a", 
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        };
+
+        window.filterDoctors = () => {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.doctor-card-item');
+            cards.forEach(card => {
+                const name = card.querySelector('.d-name').innerText.toLowerCase();
+                const special = card.querySelector('.d-special').innerText.toLowerCase();
+                card.style.display = (name.includes(term) || special.includes(term)) ? "flex" : "none";
+            });
+        };
+
+        loadDoctors();
+    </script>
+</body>
+</html>
