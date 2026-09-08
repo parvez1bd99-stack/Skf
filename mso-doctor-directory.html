@@ -1,128 +1,145 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DRM Planner - SmartConnect</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f8fafc; }
-        .active-chamber { border-left: 5px solid #3b82f6; background-color: #f0f7ff; }
-        .visited { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
-        .modal-up { animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        
-        .day-chip { transition: all 0.2s; cursor: pointer; border: 1px solid #e2e8f0; white-space: nowrap; }
-        .day-chip.active { background-color: #1e3a8a; color: white; border-color: #1e3a8a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        
-        .day-check:checked + label { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #f1f5f9; user-select: none; }
+        .glass-nav { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); }
+        .day-chip { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .day-chip.active { background: #2563eb; color: white; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); transform: translateY(-2px); }
+        .doctor-card { transition: transform 0.2s; }
+        .visited { position: relative; opacity: 0.7; }
+        .visited::after { content: "VISITED"; position: absolute; top: 10px; right: -20px; background: #10b981; color: white; font-size: 10px; font-weight: 900; padding: 2px 30px; transform: rotate(45deg); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .insight-card { background: linear-gradient(135deg, #fffbeb 0%, #fff 100%); border-left: 4px solid #f59e0b; }
+        .fab-button { box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.5); }
+        input, select, textarea { font-size: 16px !important; }
+        
+        /* সার্চ বার এনিমেশন */
+        #searchInput:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); }
     </style>
 </head>
-<body class="pb-24">
+<body class="pb-28">
 
     <!-- হেডার -->
-    <nav class="bg-slate-900 text-white p-6 sticky top-0 z-50 shadow-xl flex justify-between items-center rounded-b-[2rem]">
-        <div>
-            <h1 class="text-xl font-black text-blue-400 leading-none uppercase tracking-tighter">DRM Planner</h1>
-            <p id="todayInfo" class="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest"></p>
-        </div>
-        <div class="flex items-center gap-4">
-            <div class="text-right border-r border-slate-700 pr-4">
-                <p class="text-[8px] text-slate-400 font-bold uppercase">Total Doctors</p>
-                <p id="totalDocCount" class="text-lg font-black text-white leading-none">0</p>
+    <nav class="glass-nav text-white p-5 sticky top-0 z-50 shadow-2xl rounded-b-[2.5rem]">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div>
+                <p id="todayInfo" class="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] mb-1"></p>
+                <h1 class="text-2xl font-black tracking-tighter italic">DRM <span class="text-blue-500">PLANNER</span></h1>
             </div>
-            <button onclick="openScheduleModal()" class="bg-blue-600 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg active:scale-90 transition">＋</button>
+            <div class="bg-slate-800/50 px-4 py-2 rounded-2xl border border-slate-700">
+                <p class="text-[8px] text-slate-400 font-bold uppercase">Total Docs</p>
+                <p id="totalDocCount" class="text-xl font-black text-blue-400 leading-none">0</p>
+            </div>
         </div>
     </nav>
 
     <main class="p-4 max-w-md mx-auto">
         
-        <!-- বার ফিল্টার চিপস -->
-        <div class="mb-6 mt-2">
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 mb-2 block tracking-widest">বার অনুযায়ী ফিল্টার</label>
-            <div class="flex gap-2 overflow-x-auto no-scrollbar py-2" id="dayFilterContainer">
-                <!-- JS থেকে বাটন আসবে -->
+        <!-- সার্চ এবং ফিল্টার সেকশন -->
+        <div class="mt-2 space-y-4 mb-8">
+            <!-- সার্চ বার -->
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="text" id="searchInput" oninput="renderDirectory()" placeholder="ডাক্তার, ডিগ্রি বা এলাকা দিয়ে খুঁজুন..." 
+                    class="w-full bg-white border-2 border-slate-100 rounded-[1.5rem] py-4 pl-12 pr-4 text-sm font-bold shadow-sm outline-none transition-all">
+            </div>
+
+            <!-- বার ফিল্টার -->
+            <div class="overflow-hidden">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest">শিডিউল ফিল্টার</label>
+                    <span id="resultCount" class="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">...</span>
+                </div>
+                <div class="flex gap-2 overflow-x-auto no-scrollbar py-2" id="dayFilterContainer"></div>
             </div>
         </div>
-
-        <div id="resultCount" class="text-[10px] font-black text-blue-600 uppercase mb-4 ml-2 tracking-widest bg-blue-50 inline-block px-3 py-1 rounded-full">লোড হচ্ছে...</div>
 
         <!-- ডক্টর লিস্ট -->
         <div id="directoryList" class="space-y-6">
-            <div class="p-20 text-center text-slate-300 italic text-xs">ডাটা লোড হচ্ছে...</div>
+            <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+                <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p class="text-sm font-bold">ডাটা লোড হচ্ছে...</p>
+            </div>
         </div>
     </main>
 
-    <!-- শিডিউল ও নিউ ডক্টর মডাল -->
-    <div id="scheduleModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[60] flex items-end justify-center">
-        <div class="bg-white w-full max-w-md rounded-t-[3rem] p-8 modal-up shadow-2xl overflow-y-auto max-h-[90vh]">
+    <!-- FAB Button -->
+    <button onclick="openScheduleModal()" class="fab-button fixed bottom-8 right-6 w-16 h-16 bg-blue-600 text-white rounded-2xl flex items-center justify-center text-3xl z-50 active:scale-90 transition-all shadow-blue-200">
+        <span class="mb-1">＋</span>
+    </button>
+
+    <!-- মডালগুলো (পূর্বের কোডের মতই থাকবে) -->
+    <!-- (সংক্ষেপ করার জন্য মডাল কোড এখানে রিপিট করা হয়নি, তবে আগের মডালগুলো একইভাবে কাজ করবে) -->
+    <div id="scheduleModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[60] flex items-end justify-center">
+        <!-- মডাল কন্টেন্ট এখানে থাকবে -->
+        <div class="bg-white w-full max-w-md rounded-t-[3rem] p-8 shadow-2xl overflow-y-auto max-h-[92vh]">
+            <div class="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6"></div>
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-black text-slate-800 uppercase italic">Add / Update Slot</h3>
-                <button onclick="closeModal()" class="bg-slate-100 p-2 rounded-full text-slate-400 w-8 h-8 flex items-center justify-center">&times;</button>
+                <h3 id="modalTitle" class="text-xl font-black text-slate-800 italic uppercase">Doctor Profile</h3>
+                <button onclick="closeModal()" class="bg-slate-100 text-slate-500 w-10 h-10 rounded-full flex items-center justify-center font-bold">✕</button>
             </div>
-            
-            <div class="space-y-4">
-                <!-- ডক্টর ড্রপডাউন -->
+            <div class="space-y-5">
                 <div class="flex gap-2">
-                    <select id="doctorSelect" class="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-blue-500">
+                    <select id="doctorSelect" class="flex-1 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-blue-500 transition">
                         <option value="">ডাক্তার সিলেক্ট করুন</option>
                     </select>
-                    <button onclick="toggleNewDocForm()" class="bg-slate-800 text-white px-5 rounded-2xl text-xs font-bold uppercase">New +</button>
+                    <button onclick="toggleNewDocForm()" class="bg-slate-900 text-white px-6 rounded-2xl text-[10px] font-black uppercase">NEW +</button>
                 </div>
-
-                <!-- ডক্টর ডাটা ফরম -->
-                <div id="newDocForm" class="hidden bg-blue-50 p-5 rounded-[2rem] border-2 border-blue-100 space-y-3">
-                    <label class="text-[9px] font-black text-blue-500 uppercase ml-1">ডাক্তারের ব্যক্তিগত তথ্য</label>
-                    <input type="text" id="newDocName" placeholder="ডাক্তারের নাম" class="w-full bg-white p-3 rounded-xl text-sm font-bold border border-blue-100 outline-none">
+                <div id="newDocForm" class="hidden bg-blue-50/50 p-5 rounded-[2rem] border-2 border-blue-100 space-y-3">
+                    <input type="text" id="newDocName" placeholder="ডাক্তারের নাম" class="w-full bg-white p-4 rounded-xl text-sm font-bold border border-blue-100 outline-none">
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="newDocDegree" placeholder="ডিগ্রি" class="w-full bg-white p-3 rounded-xl text-xs font-bold border border-blue-100 outline-none">
-                        <input type="tel" id="newDocPhone" placeholder="ফোন নম্বর" class="w-full bg-white p-3 rounded-xl text-xs font-bold border border-blue-100 outline-none">
+                        <input type="text" id="newDocDegree" placeholder="ডিগ্রি" class="w-full bg-white p-4 rounded-xl text-xs font-bold border border-blue-100 outline-none">
+                        <input type="tel" id="newDocPhone" placeholder="ফোন নম্বর" class="w-full bg-white p-4 rounded-xl text-xs font-bold border border-blue-100 outline-none">
                     </div>
                 </div>
-
-                <!-- চেম্বার ও শিডিউল তথ্য -->
-                <div class="space-y-3">
-                    <label class="text-[9px] font-black text-slate-400 uppercase ml-1">চেম্বারের তথ্য</label>
-                    <input type="text" id="chamberName" placeholder="চেম্বারের নাম (উদা: পপুলার ডায়াগনস্টিক)" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-500">
-                    <input type="text" id="location" placeholder="এলাকা বা পজিশন" class="w-full bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none focus:border-blue-500">
-                    
-                    <div>
-                        <label class="text-[10px] font-bold text-gray-400 uppercase mb-2 block ml-1">চেম্বারের দিনগুলো:</label>
-                        <div class="grid grid-cols-4 gap-2">
-                            <div class="relative"><input type="checkbox" name="dayPick" id="dSat" value="শনি" class="hidden day-check"><label for="dSat" class="block text-center border-2 border-slate-100 rounded-xl py-2.5 text-[10px] font-bold cursor-pointer bg-slate-50">শনি</label></div>
-                            <div class="relative"><input type="checkbox" name="dayPick" id="dSun" value="রবি" class="hidden day-check"><label for="dSun" class="block text-center border-2 border-slate-100 rounded-xl py-2.5 text-[10px] font-bold cursor-pointer bg-slate-50">রবি</label></div>
-                            <div class="relative"><input type="checkbox" name="dayPick" id="dMon" value="সোম" class="hidden day-check"><label for="dMon" class="block text-center border-2 border-slate-100 rounded-xl py-2.5 text-[10px] font-bold cursor-pointer bg-slate-50">সোম</label></div>
-                            <div class="relative"><input type="checkbox" name="dayPick" id="dTue" value="মঙ্গল" class="hidden day-check"><label for="dTue" class="block text-center border-2 border-slate-100 rounded-xl py-2.5 text-[10px] font-bold cursor-pointer bg-slate-50">মঙ্গল</label></div>
-                            <div class="relative"><input type="checkbox" name="dayPick" id="dWed" value="বুধ" class="hidden day-check"><label for="dWed" class="block text-center border-2 border-slate-100 rounded-xl py-2.5 text-[10px] font-bold cursor-pointer bg-slate-50">বুধ</label></div>
-                            <div class="relative"><input type="checkbox" name="dayPick" id="dThu" value="বৃহস্পতি" class="hidden day-check"><label for="dThu" class="block text-center border-2 border-slate-100 rounded-xl py-2.5 text-[10px] font-bold cursor-pointer bg-slate-50">বৃহস্পতি</label></div>
-                            <div class="relative"><input type="checkbox" name="dayPick" id="dfri" value="শুক্র" class="hidden day-check"><label for="dfri" class="block text-center border-2 border-slate-100 rounded-xl py-2.5 text-[10px] font-bold cursor-pointer bg-slate-50">শুক্র</label></div>
-                        </div>
+                <div id="existingSchedules" class="hidden space-y-3">
+                    <label class="text-[10px] font-black text-rose-500 uppercase tracking-widest ml-1">বিদ্যমান শিডিউল</label>
+                    <div id="scheduleListContainer" class="space-y-2"></div>
+                </div>
+                <div class="space-y-4 bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100">
+                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">শিডিউল যোগ করুন</label>
+                    <input type="text" id="chamberName" placeholder="চেম্বারের নাম" class="w-full bg-white border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none">
+                    <input type="text" id="location" placeholder="এলাকা" class="w-full bg-white border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none">
+                    <div class="grid grid-cols-4 gap-2">
+                        <div class="relative"><input type="checkbox" name="dayPick" id="dSat" value="শনি" class="hidden day-check"><label for="dSat" class="block text-center border-2 border-slate-200 rounded-xl py-2 text-[10px] font-bold cursor-pointer">শনি</label></div>
+                        <div class="relative"><input type="checkbox" name="dayPick" id="dSun" value="রবি" class="hidden day-check"><label for="dSun" class="block text-center border-2 border-slate-200 rounded-xl py-2 text-[10px] font-bold cursor-pointer">রবি</label></div>
+                        <div class="relative"><input type="checkbox" name="dayPick" id="dMon" value="সোম" class="hidden day-check"><label for="dMon" class="block text-center border-2 border-slate-200 rounded-xl py-2 text-[10px] font-bold cursor-pointer">সোম</label></div>
+                        <div class="relative"><input type="checkbox" name="dayPick" id="dTue" value="মঙ্গল" class="hidden day-check"><label for="dTue" class="block text-center border-2 border-slate-200 rounded-xl py-2 text-[10px] font-bold cursor-pointer">মঙ্গল</label></div>
+                        <div class="relative"><input type="checkbox" name="dayPick" id="dWed" value="বুধ" class="hidden day-check"><label for="dWed" class="block text-center border-2 border-slate-200 rounded-xl py-2 text-[10px] font-bold cursor-pointer">বুধ</label></div>
+                        <div class="relative"><input type="checkbox" name="dayPick" id="dThu" value="বৃহস্পতি" class="hidden day-check"><label for="dThu" class="block text-center border-2 border-slate-200 rounded-xl py-2 text-[10px] font-bold cursor-pointer">বৃহস্পতি</label></div>
+                        <div class="relative"><input type="checkbox" name="dayPick" id="dfri" value="শুক্র" class="hidden day-check"><label for="dfri" class="block text-center border-2 border-slate-200 rounded-xl py-2 text-[10px] font-bold cursor-pointer">শুক্র</label></div>
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-3">
-                        <select id="shiftSelect" class="bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none"><option value="morning">সকাল</option><option value="evening">বিকাল/রাত</option></select>
-                        <input type="text" id="time" placeholder="সময় (৫টা - ৯টা)" class="bg-slate-50 border-2 border-slate-100 p-4 rounded-2xl text-sm font-bold outline-none">
+                        <select id="shiftSelect" class="bg-white border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none"><option value="morning">সকাল</option><option value="evening">বিকাল/রাত</option></select>
+                        <input type="text" id="time" placeholder="সময় (৫টা-৯টা)" class="bg-white border border-slate-200 p-4 rounded-2xl text-sm font-bold outline-none">
                     </div>
                 </div>
-
-                <button onclick="saveEverything()" id="saveBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition">সব সেভ করুন</button>
+                <button onclick="saveEverything()" id="saveBtn" class="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black uppercase text-xs shadow-xl active:scale-95 transition-all">সেভ করুন</button>
             </div>
         </div>
     </div>
 
     <!-- নোট মডাল -->
-    <div id="noteModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[70] flex items-center justify-center p-6">
-        <div class="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl">
-            <h3 class="text-md font-black text-slate-800 mb-4 uppercase italic">Add Private Note</h3>
+    <div id="noteModal" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-[70] flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl">
+            <h3 class="text-lg font-black text-slate-800 mb-6 uppercase italic text-center tracking-widest">Private Note</h3>
             <input type="hidden" id="noteDocId">
-            <input type="text" id="noteTitle" placeholder="টাইটেল" class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none mb-3 border border-slate-100">
-            <textarea id="noteDesc" placeholder="বিস্তারিত লিখুন..." class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-medium h-32 outline-none mb-4 border border-slate-100"></textarea>
-            <div class="flex gap-2">
+            <div class="space-y-3">
+                <input type="text" id="noteTitle" placeholder="বিষয়" class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold outline-none border border-slate-100 focus:border-amber-400">
+                <textarea id="noteDesc" placeholder="বিস্তারিত লিখুন..." class="w-full bg-slate-50 p-4 rounded-2xl text-sm font-medium h-32 outline-none border border-slate-100 focus:border-amber-400"></textarea>
+            </div>
+            <div class="flex gap-3 mt-6">
                 <button onclick="document.getElementById('noteModal').classList.add('hidden')" class="flex-1 bg-slate-100 text-slate-400 py-4 rounded-2xl font-bold text-xs uppercase">বাতিল</button>
-                <button onclick="saveNote()" class="flex-[2] bg-amber-500 text-white py-4 rounded-2xl font-bold text-xs uppercase shadow-lg">নোট সেভ করুন</button>
+                <button onclick="saveNote()" class="flex-[2] bg-amber-500 text-white py-4 rounded-2xl font-bold text-xs uppercase shadow-lg shadow-amber-200">সেভ নোট</button>
             </div>
         </div>
     </div>
@@ -135,16 +152,102 @@
         let visitedIds = [];
         const daysOfWeek = ["শনি", "রবি", "সোম", "মঙ্গল", "বুধ", "বৃহস্পতি", "শুক্র"];
         const dayMap = { 0: "রবি", 1: "সোম", 2: "মঙ্গল", 3: "বুধ", 4: "বৃহস্পতি", 5: "শুক্র", 6: "শনি" };
-        let activeFilterDay = "সব"; 
+        let activeFilterDay = dayMap[new Date().getDay()];
 
         async function init() {
             document.getElementById('todayInfo').innerText = `${new Date().toLocaleDateString('bn-BD')} | ${dayMap[new Date().getDay()]}বার`;
             renderDayFilterChips();
-
             const dSnap = await getDocs(query(collection(db, "doctors"), orderBy("name", "asc")));
             allDoctors = dSnap.docs.map(d => ({ id: d.id, ...d.data() }));
             document.getElementById('totalDocCount').innerText = allDoctors.length;
+            populateDropdown();
+            await loadVisits();
+            renderDirectory();
+        }
 
+        function renderDayFilterChips() {
+            const container = document.getElementById('dayFilterContainer');
+            let html = `<button onclick="setDayFilter('সব')" class="day-chip flex-shrink-0 px-6 py-3 rounded-2xl text-[11px] font-black uppercase shadow-sm ${activeFilterDay === 'সব' ? 'active' : 'bg-white text-slate-400'}">সব</button>`;
+            daysOfWeek.forEach(day => {
+                html += `<button onclick="setDayFilter('${day}')" class="day-chip flex-shrink-0 px-6 py-3 rounded-2xl text-[11px] font-black uppercase shadow-sm ${activeFilterDay === day ? 'active' : 'bg-white text-slate-400'}">${day}</button>`;
+            });
+            container.innerHTML = html;
+        }
+
+        window.setDayFilter = (day) => { activeFilterDay = day; renderDayFilterChips(); renderDirectory(); }
+
+        window.renderDirectory = () => {
+            const listDiv = document.getElementById('directoryList');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            listDiv.innerHTML = "";
+            let count = 0;
+
+            allDoctors.forEach(doctor => {
+                const schedules = doctor.schedules || [];
+                const isVisited = visitedIds.includes(doctor.id);
+                
+                // ফিল্টারিং লজিক (Search + Day Filter)
+                const matchesDay = (activeFilterDay === 'সব') || schedules.some(s => s.days.includes(activeFilterDay));
+                const matchesSearch = doctor.name.toLowerCase().includes(searchTerm) || 
+                                     (doctor.degree && doctor.degree.toLowerCase().includes(searchTerm)) ||
+                                     schedules.some(s => s.chamberName.toLowerCase().includes(searchTerm) || s.location.toLowerCase().includes(searchTerm));
+
+                if(matchesDay && matchesSearch) {
+                    count++;
+                    const displaySchedules = activeFilterDay === 'সব' ? schedules : schedules.filter(s => s.days.includes(activeFilterDay));
+                    
+                    listDiv.innerHTML += `
+                        <div class="doctor-card bg-white rounded-[2.5rem] shadow-sm border border-white overflow-hidden ${isVisited ? 'visited' : ''}">
+                            <div class="p-6 bg-slate-50/50 flex justify-between items-start border-b border-slate-100">
+                                <div class="flex-1 pr-4">
+                                    <h2 class="text-base font-black text-slate-800 leading-tight">${doctor.name}</h2>
+                                    <p class="text-[10px] text-blue-600 font-bold uppercase mt-1 tracking-wider">${doctor.degree || 'MBBS'}</p>
+                                    ${doctor.phone ? `<a href="tel:${doctor.phone}" class="text-[10px] text-slate-400 font-bold mt-1 block">📞 ${doctor.phone}</a>` : ''}
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <button onclick="markVisit('${doctor.id}')" class="${isVisited ? 'bg-emerald-500' : 'bg-slate-900'} text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all active:scale-90">
+                                        ${isVisited ? '✓' : '<span class="text-[10px] font-black">VISIT</span>'}
+                                    </button>
+                                    <button onclick="editDoctor('${doctor.id}')" class="bg-white border border-slate-200 text-slate-400 w-12 h-10 rounded-2xl flex items-center justify-center text-sm">✏️</button>
+                                </div>
+                            </div>
+                            <div class="p-6 space-y-4">
+                                ${displaySchedules.length > 0 ? displaySchedules.map(s => `
+                                    <div class="relative pl-5 before:content-[''] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1.5 before:bg-blue-500 before:rounded-full">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <span class="text-[9px] font-black uppercase text-blue-500 bg-blue-50 px-2 py-0.5 rounded-md">${s.days}</span>
+                                            <span class="text-[9px] font-bold text-slate-400">${s.shift === 'morning' ? 'সকাল' : 'বিকাল/রাত'}</span>
+                                        </div>
+                                        <h4 class="text-sm font-bold text-slate-700">${s.chamberName}</h4>
+                                        <p class="text-[11px] text-slate-500 mt-1 font-medium">📍 ${s.location} • ⏰ <span class="text-indigo-600 font-bold">${s.time}</span></p>
+                                    </div>
+                                `).join('') : '<p class="text-[10px] text-slate-300 italic text-center py-2">কোনো শিডিউল নেই</p>'}
+                                
+                                <div class="pt-4 border-t border-slate-100">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h4 class="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em]">CRM Insights</h4>
+                                        <button onclick="openNoteModal('${doctor.id}')" class="bg-amber-50 text-amber-600 px-3 py-1 rounded-xl text-[10px] font-bold uppercase">Add Note</button>
+                                    </div>
+                                    <div class="space-y-3">
+                                        ${(doctor.insights || []).map((n, i) => `
+                                            <div class="bg-amber-50/50 p-4 rounded-2xl relative border border-amber-100">
+                                                <button onclick="deleteNote('${doctor.id}', ${i})" class="absolute top-3 right-3 text-amber-300">✕</button>
+                                                <h5 class="text-[10px] font-black text-amber-800 uppercase leading-none mb-1">${n.title}</h5>
+                                                <p class="text-[11px] text-amber-900/70 font-medium leading-relaxed">${n.desc}</p>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            document.getElementById('resultCount').innerText = `${count} জন পাওয়া গেছে`;
+        }
+
+        // বাকি ফাংশনগুলো আগের মতই থাকবে...
+        window.populateDropdown = () => {
             const select = document.getElementById('doctorSelect');
             select.innerHTML = '<option value="">ডাক্তার সিলেক্ট করুন</option>';
             allDoctors.forEach(doc => {
@@ -152,41 +255,7 @@
                 opt.value = doc.id; opt.innerText = doc.name;
                 select.appendChild(opt);
             });
-
-            // ড্রপডাউন চেঞ্জ লিসেনার
-            select.addEventListener('change', (e) => {
-                const docId = e.target.value;
-                const form = document.getElementById('newDocForm');
-                if (docId) {
-                    const data = allDoctors.find(d => d.id === docId);
-                    document.getElementById('newDocName').value = data.name || "";
-                    document.getElementById('newDocDegree').value = data.degree || "";
-                    document.getElementById('newDocPhone').value = data.phone || "";
-                    form.classList.remove('hidden');
-                } else {
-                    form.classList.add('hidden');
-                }
-            });
-
-            await loadVisits();
-            renderDirectory();
-        }
-
-        function renderDayFilterChips() {
-            const container = document.getElementById('dayFilterContainer');
-            container.innerHTML = `<button onclick="setDayFilter('সব')" class="day-chip ${activeFilterDay === 'সব' ? 'active' : 'bg-white text-slate-400'} px-6 py-2.5 rounded-full text-[11px] font-black uppercase shadow-sm">সব ডক্টর</button>`;
-            container.innerHTML += daysOfWeek.map(day => `
-                <button onclick="setDayFilter('${day}')" 
-                    class="day-chip px-6 py-2.5 rounded-full text-[11px] font-black uppercase shadow-sm ${activeFilterDay === day ? 'active' : 'bg-white text-slate-400'}">
-                    ${day}
-                </button>
-            `).join('');
-        }
-
-        window.setDayFilter = (day) => {
-            activeFilterDay = day;
-            renderDayFilterChips();
-            renderDirectory();
+            select.addEventListener('change', (e) => loadDoctorToForm(e.target.value));
         }
 
         async function loadVisits() {
@@ -196,159 +265,85 @@
             vSnap.forEach(v => { if(v.id.includes(todayStr)) visitedIds.push(v.data().docId); });
         }
 
-        window.renderDirectory = () => {
-            const listDiv = document.getElementById('directoryList');
-            listDiv.innerHTML = "";
-            let count = 0;
-
-            allDoctors.forEach(doctor => {
-                const schedules = doctor.schedules || [];
-                const notes = doctor.insights || [];
-                const isVisited = visitedIds.includes(doctor.id);
-
-                const filteredSchedules = schedules.filter(s => {
-                    return (activeFilterDay === 'সব') || (s.days && s.days.includes(activeFilterDay));
-                });
-
-                if(activeFilterDay !== "সব" && filteredSchedules.length === 0) return;
-                count++;
-
-                listDiv.innerHTML += `
-                    <div class="bg-white rounded-[2.5rem] shadow-sm border border-white overflow-hidden mb-6 ${isVisited ? 'visited' : ''}">
-                        <div class="p-6 bg-slate-50 flex justify-between items-center border-b">
-                            <div>
-                                <h2 class="text-sm font-black text-slate-800 leading-none">${doctor.name}</h2>
-                                <p class="text-[9px] text-blue-600 font-bold uppercase mt-1 tracking-wider">${doctor.degree}</p>
-                            </div>
-                            <button onclick="markVisit('${doctor.id}')" class="${isVisited ? 'bg-emerald-500' : 'bg-slate-800'} text-white px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-tighter">
-                                ${isVisited ? '✓ Visited' : 'Mark Visit'}
-                            </button>
+        window.loadDoctorToForm = (docId) => {
+            const form = document.getElementById('newDocForm');
+            const schedArea = document.getElementById('existingSchedules');
+            const schedList = document.getElementById('scheduleListContainer');
+            if (docId) {
+                const data = allDoctors.find(d => d.id === docId);
+                document.getElementById('newDocName').value = data.name || "";
+                document.getElementById('newDocDegree').value = data.degree || "";
+                document.getElementById('newDocPhone').value = data.phone || "";
+                form.classList.remove('hidden');
+                if(data.schedules && data.schedules.length > 0) {
+                    schedArea.classList.remove('hidden');
+                    schedList.innerHTML = data.schedules.map((s, i) => `
+                        <div class="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                            <div class="text-[11px]"><p class="font-bold text-slate-700">${s.chamberName}</p><p class="text-slate-400 text-[9px] uppercase font-bold">${s.days} | ${s.time}</p></div>
+                            <button onclick="removeSchedule('${docId}', ${i})" class="bg-rose-50 text-rose-500 w-8 h-8 rounded-full flex items-center justify-center font-bold">✕</button>
                         </div>
-
-                        <div class="p-4 space-y-3">
-                            ${filteredSchedules.length > 0 ? filteredSchedules.map(s => `
-                                <div class="p-4 rounded-2xl bg-white border border-slate-100 active-chamber">
-                                    <div class="flex justify-between items-start">
-                                        <span class="text-[8px] font-black uppercase text-blue-500">Days: ${s.days}</span>
-                                        <span class="text-[9px] font-bold text-slate-400 uppercase">${s.shift === 'morning' ? 'সকাল' : 'বিকাল/রাত'}</span>
-                                    </div>
-                                    <h4 class="text-xs font-black text-slate-700 mt-1">${s.chamberName}</h4>
-                                    <p class="text-[10px] text-indigo-600 font-black mt-1">⏰ ${s.time} | 📍 ${s.location}</p>
-                                </div>
-                            `).join('') : '<p class="text-[9px] text-slate-400 text-center py-4 italic">কোনো শিডিউল তথ্য নেই</p>'}
-                        </div>
-
-                        <div class="px-6 pb-6">
-                            <div class="flex justify-between items-center mb-3">
-                                <h4 class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Insights (CRM)</h4>
-                                <button onclick="openNoteModal('${doctor.id}')" class="w-8 h-8 bg-amber-50 flex items-center justify-center rounded-lg text-amber-500 text-lg shadow-sm">📝</button>
-                            </div>
-                            <div class="space-y-2">
-                                ${notes.map((n, i) => `
-                                    <div class="insight-card p-4 rounded-2xl relative group">
-                                        <button onclick="deleteNote('${doctor.id}', ${i})" class="absolute top-2 right-3 text-rose-300 text-xs font-bold">&times;</button>
-                                        <h5 class="text-[10px] font-black text-amber-700 uppercase leading-none">${n.title}</h5>
-                                        <p class="text-[11px] text-slate-600 font-medium mt-1">${n.desc}</p>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            document.getElementById('resultCount').innerText = `${activeFilterDay}: ${count} জন প্রদর্শিত`;
+                    `).join('');
+                } else { schedArea.classList.add('hidden'); }
+            } else { form.classList.add('hidden'); schedArea.classList.add('hidden'); }
         }
 
         window.saveEverything = async () => {
             const docId = document.getElementById('doctorSelect').value;
             const inputName = document.getElementById('newDocName').value.trim();
-            const inputDegree = document.getElementById('newDocDegree').value.trim();
-            const inputPhone = document.getElementById('newDocPhone').value.trim();
             const chamberName = document.getElementById('chamberName').value.trim();
-            const btn = document.getElementById('saveBtn');
             const selectedDays = Array.from(document.querySelectorAll('input[name="dayPick"]:checked')).map(cb => cb.value).join(', ');
-
-            if(!inputName || !chamberName || !selectedDays) { 
-                alert("নাম, চেম্বার এবং কমপক্ষে একটি বার সিলেক্ট করুন"); 
-                return; 
-            }
-
-            btn.disabled = true; btn.innerText = "সেভ হচ্ছে...";
-            let targetDocId = docId;
-
+            const btn = document.getElementById('saveBtn');
+            if(!inputName) { alert("নাম আবশ্যক!"); return; }
+            btn.disabled = true; btn.innerText = "সংরক্ষণ হচ্ছে...";
             try {
-                const basicInfo = {
-                    name: inputName,
-                    degree: inputDegree,
-                    phone: inputPhone,
-                    timestamp: serverTimestamp()
-                };
-
+                let targetDocId = docId;
+                const basicInfo = { name: inputName, degree: document.getElementById('newDocDegree').value.trim(), phone: document.getElementById('newDocPhone').value.trim(), lastUpdated: serverTimestamp() };
                 if(!docId) {
-                    const newDocRef = await addDoc(collection(db, "doctors"), {
-                        ...basicInfo,
-                        honorarium: 20,
-                        schedules: [],
-                        insights: []
-                    });
+                    const newDocRef = await addDoc(collection(db, "doctors"), { ...basicInfo, schedules: [], insights: [] });
                     targetDocId = newDocRef.id;
-                } else {
-                    await updateDoc(doc(db, "doctors", docId), basicInfo);
+                } else { await updateDoc(doc(db, "doctors", docId), basicInfo); }
+                if(chamberName && selectedDays) {
+                    const slot = { chamberName, location: document.getElementById('location').value, days: selectedDays, shift: document.getElementById('shiftSelect').value, time: document.getElementById('time').value };
+                    await updateDoc(doc(db, "doctors", targetDocId), { schedules: arrayUnion(slot) });
                 }
-
-                const slot = {
-                    chamberName: chamberName,
-                    location: document.getElementById('location').value,
-                    days: selectedDays,
-                    shift: document.getElementById('shiftSelect').value,
-                    time: document.getElementById('time').value
-                };
-
-                await updateDoc(doc(db, "doctors", targetDocId), { 
-                    schedules: arrayUnion(slot) 
-                });
-                
-                alert("সফলভাবে সংরক্ষিত হয়েছে!");
                 location.reload();
-            } catch (e) { 
-                console.error(e); 
-                alert("Error: " + e.message); 
-                btn.disabled = false; 
-                btn.innerText = "সব সেভ করুন";
-            }
+            } catch (e) { btn.disabled = false; alert("ত্রুটি হয়েছে!"); }
         }
 
-        window.toggleNewDocForm = () => {
-            const form = document.getElementById('newDocForm');
-            const select = document.getElementById('doctorSelect');
-            select.value = ""; 
-            document.getElementById('newDocName').value = "";
-            document.getElementById('newDocDegree').value = "";
-            document.getElementById('newDocPhone').value = "";
-            form.classList.toggle('hidden');
-        };
+        window.markVisit = async (docId) => {
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            await setDoc(doc(db, "daily_visits", `${todayStr}_${docId}`), { docId, date: todayStr, timestamp: serverTimestamp() });
+            location.reload();
+        }
 
         window.openNoteModal = (id) => { document.getElementById('noteDocId').value = id; document.getElementById('noteModal').classList.remove('hidden'); }
         window.saveNote = async () => {
             const id = document.getElementById('noteDocId').value;
-            const note = { title: document.getElementById('noteTitle').value, desc: document.getElementById('noteDesc').value };
-            if(!note.title) return;
-            await updateDoc(doc(db, "doctors", id), { insights: arrayUnion(note) });
+            const title = document.getElementById('noteTitle').value;
+            const desc = document.getElementById('noteDesc').value;
+            if(!title) return;
+            await updateDoc(doc(db, "doctors", id), { insights: arrayUnion({ title, desc, date: new Date().toLocaleDateString() }) });
             location.reload();
         }
+
         window.deleteNote = async (docId, idx) => {
             if(!confirm("মুছে ফেলবেন?")) return;
             const doctor = allDoctors.find(d => d.id === docId);
             await updateDoc(doc(db, "doctors", docId), { insights: arrayRemove(doctor.insights[idx]) });
             location.reload();
         }
-        window.openScheduleModal = () => document.getElementById('scheduleModal').classList.remove('hidden');
-        window.closeModal = () => document.getElementById('scheduleModal').classList.add('hidden');
-        window.markVisit = async (docId) => {
-            const todayStr = new Date().toLocaleDateString('en-CA');
-            await setDoc(doc(db, "daily_visits", `${todayStr}_${docId}`), { docId, date: todayStr, timestamp: new Date() });
+
+        window.removeSchedule = async (docId, index) => {
+            if(!confirm("ডিলিট করবেন?")) return;
+            const doctor = allDoctors.find(d => d.id === docId);
+            await updateDoc(doc(db, "doctors", docId), { schedules: arrayRemove(doctor.schedules[index]) });
             location.reload();
         }
+
+        window.toggleNewDocForm = () => { document.getElementById('newDocForm').classList.toggle('hidden'); document.getElementById('doctorSelect').value = ""; }
+        window.editDoctor = (docId) => { openScheduleModal(); document.getElementById('doctorSelect').value = docId; loadDoctorToForm(docId); }
+        window.openScheduleModal = () => document.getElementById('scheduleModal').classList.remove('hidden');
+        window.closeModal = () => document.getElementById('scheduleModal').classList.add('hidden');
 
         init();
     </script>
