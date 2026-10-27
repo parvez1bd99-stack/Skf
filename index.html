@@ -3,28 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light only">
+<meta name="theme-color" content="#e3f1e8">
 <title>অর্ডার করুন</title>
 <style>
-:root{--bg:#f3f7f4;--card:#fff;--ink:#14281d;--muted:#5d7365;--line:#d5e1d9;--accent:#128c4a;--accent-ink:#fff;color-scheme:light;
+:root{--bg:#e3f1e8;--card:#ffffff;--ink:#12261b;--muted:#4a6355;--line:#c3d9ca;--accent:#128c4a;--accent-ink:#ffffff;--on:#e6f5ec;color-scheme:light only;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a14;--card:#17261d;--ink:#e8f3ec;--muted:#93aa9b;--line:#2a4034;--accent:#2fbf71;--accent-ink:#06210f;color-scheme:dark}}
 *{box-sizing:border-box}
+html{background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif;line-height:1.6}
 main{max-width:560px;margin:0 auto;padding:20px 16px 120px}
-h1{font-size:1.5rem;margin:8px 0 4px}
+h1{font-size:1.5rem;margin:8px 0 4px;color:var(--ink)}
 p.sub{margin:0 0 16px;color:var(--muted)}
 input[type=search]{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:12px}
+input[type=search]::placeholder{color:#7a9283}
 ul{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
 li{border-bottom:1px solid var(--line)}
 li:last-child{border-bottom:0}
-label.row{display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer}
+label.row{display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer;color:var(--ink)}
 label.row input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}
 .name{flex:1}
 .qty{display:none;align-items:center;gap:8px}
 li.on .qty{display:flex}
-li.on{background:color-mix(in srgb,var(--accent) 9%,var(--card))}
+li.on{background:var(--on)}
 .qty button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:1.1rem;cursor:pointer}
-.qty span{min-width:20px;text-align:center}
+.qty span{min-width:20px;text-align:center;color:var(--ink)}
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
 .bar div{max-width:560px;margin:0 auto}
 #send{width:100%;padding:14px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;font-size:1.05rem;cursor:pointer}
@@ -82,11 +85,14 @@ var PRODUCTS = [
 "Glunor 500 mg","Glunor 850 mg","Glunor 500 mg XR",
 "Sitazid M 50/500",
 "Insumin 500 mg",
-  "exoren 1.25mg", " exoren 2.5mg","exoren 5mg",
+"exoren 1.25mg","exoren 2.5mg","exoren 5mg",
 "Zepter 2.5 mg","Zepter 5 mg","Zepter 7.5 mg",
-"Aldorin 50 mg","Cifibet 100mg", "surliv 150mg"," surliv300mg", "Duoliv 5mg", " Duoliv 10mg", "resmit 80mg", " resmit 100mg", "oroxat 20mg", " oroxat 50mg", "oroxat 100mg", " hemocrit 3000 inj", "hemocrit 5000 inj", "hemocrit 2000inj", "Dephos 500mg",  " Depfalix 65 inj", "Renfit 10mg",  " Renfit 20mg", " Fericit 210mg", "Rivarox 2.5mg", " Rivarox 10mg",  "Rivarox 15mg", " Rivarox 20mg", "Vincet 5mg",  "creston 10mg", " lipicon 10mg", "cardon 50mg"
+"Aldorin 50 mg","Cifibet 100mg","surliv 150mg","surliv300mg","Duoliv 5mg","Duoliv 10mg","resmit 80mg","resmit 100mg","oroxat 20mg","oroxat 50mg","oroxat 100mg","hemocrit 3000 inj","hemocrit 5000 inj","hemocrit 2000inj","Dephos 500mg","Depfalix 65 inj","Renfit 10mg","Renfit 20mg","Fericit 210mg","Vincet 5mg","creston 10mg","lipicon 10mg","cardon 50mg"
 ];
 // =================================
+// নামের আগে-পরের বাড়তি ফাঁকা মুছে দেয়
+PRODUCTS = PRODUCTS.map(function(p){return p.trim()});
+
 var sel = {};
 var KEY = "order_selection_v1";
 var list = document.getElementById("list"), q = document.getElementById("q"), send = document.getElementById("send");
