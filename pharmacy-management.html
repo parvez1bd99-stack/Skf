@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ফার্মেসি তাক ও অর্ডার ট্র্যাকার</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+        body { font-family: 'Hind Siliguri', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 pb-24">
+
+    <!-- 📱 STICKY TOP: মোবাইল সার্চ ও তাৎক্ষণিক তাক ফাইন্ডার -->
+    <div class="sticky top-0 z-30 bg-white/95 backdrop-blur-sm shadow-sm border-b border-slate-200 px-3 py-2.5">
+        <div class="max-w-md mx-auto">
+            
+            <!-- সার্চ বার -->
+            <div class="relative flex items-center">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-emerald-600 text-sm"></i>
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="প্রেসক্রিপশন দেখে ওষুধের নাম লিখুন..." 
+                       class="w-full pl-9 pr-9 py-2 bg-slate-100 border border-slate-300 rounded-xl text-sm sm:text-base font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition" autocomplete="off" autofocus>
+                <button onclick="clearSearch()" class="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-circle-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- ⚡ Compact Instant Ribbon (সার্চ করলেই কিবোর্ডের উপরে ভেসে উঠবে) -->
+            <div id="quickResult" class="hidden mt-2 bg-emerald-50/90 border border-emerald-400 rounded-xl p-2.5 shadow-sm transition-all">
+                
+                <!-- লাইন ১: নাম এবং বড় তাক নম্বর -->
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 pr-1">
+                        <h4 id="resName" class="font-extrabold text-slate-900 text-sm leading-tight break-words">Napa Extra</h4>
+                        <span id="resCompany" class="inline-block mt-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-100/80 px-1.5 py-0.2 rounded">Beximco</span>
+                    </div>
+
+                    <!-- হাইলাইট করা তাক স্ট্যাম্প -->
+                    <div class="shrink-0 text-center bg-blue-700 text-white px-2.5 py-1 rounded-lg shadow-xs">
+                        <span class="block text-[8px] font-bold uppercase tracking-wider text-blue-100 leading-none">তাক</span>
+                        <span id="resRack" class="text-sm font-black leading-tight">A-1</span>
+                    </div>
+                </div>
+
+                <!-- লাইন ২: এক ক্লিকে স্ট্যাটাস চেঞ্জার -->
+                <div class="mt-2 pt-2 border-t border-emerald-200/70 flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-emerald-900">অবস্থা বদলান:</span>
+                    <div class="flex gap-1 shrink-0">
+                        <button onclick="updateActiveStatus('in_stock')" id="btnIn" class="px-2 py-0.5 rounded text-[11px] font-bold border transition">🟢 আছে</button>
+                        <button onclick="updateActiveStatus('low_stock')" id="btnLow" class="px-2 py-0.5 rounded text-[11px] font-bold border transition">🟡 গোডাউন</button>
+                        <button onclick="updateActiveStatus('out_of_stock')" id="btnOut" class="px-2 py-0.5 rounded text-[11px] font-bold border transition">🔴 শেষ</button>
+                    </div>
+                </div>
+
+                <!-- গোডাউন নোট -->
+                <div id="resNoteRow" class="hidden mt-1.5 pt-1 border-t border-emerald-200/50 flex items-start gap-1.5 text-[11px] text-emerald-950 font-medium">
+                    <i class="fa-solid fa-warehouse text-emerald-700 mt-0.5 shrink-0 text-[10px]"></i>
+                    <span id="resNote" class="leading-tight break-words">গোডাউন রুম-২, কার্টন-৫</span>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto px-3 py-3">
+
+        <!-- 📑 ৩টি স্মার্ট ফিল্টার ট্যাব -->
+        <div class="grid grid-cols-3 gap-1.5 mb-3">
+            <button onclick="setFilter('all')" id="tabAll" class="filter-tab active py-2 rounded-xl text-xs font-bold transition flex flex-col items-center bg-emerald-700 text-white shadow-xs">
+                <span>সব ওষুধ</span>
+                <span id="countAll" class="text-[10px] opacity-90 font-medium">০ টি</span>
+            </button>
+            <button onclick="setFilter('out_of_stock')" id="tabOut" class="filter-tab py-2 rounded-xl text-xs font-bold transition flex flex-col items-center bg-white text-red-600 border border-slate-200 shadow-xs">
+                <span>🔴 অর্ডার দিন</span>
+                <span id="countOut" class="text-[10px] opacity-90 font-black">০ টি</span>
+            </button>
+            <button onclick="setFilter('low_stock')" id="tabLow" class="filter-tab py-2 rounded-xl text-xs font-bold transition flex flex-col items-center bg-white text-amber-600 border border-slate-200 shadow-xs">
+                <span>🟡 গোডাউন লিস্ট</span>
+                <span id="countLow" class="text-[10px] opacity-90 font-black">০ টি</span>
+            </button>
+        </div>
+
+        <!-- 🏢 কোম্পানি অনুযায়ী গ্রুপ করা অর্ডার লিস্ট -->
+        <div id="companyOrderContainer" class="space-y-3 hidden"></div>
+
+        <!-- 📋 সুন্দরভাবে সাজানো ওষুধ কার্ড লিস্ট -->
+        <div id="medicineList" class="space-y-2.5"></div>
+
+        <!-- ফুটার ও ব্যাকআপ -->
+        <div class="flex justify-between items-center text-[11px] text-slate-500 font-semibold mt-6 px-1 border-t border-slate-200 pt-2.5">
+            <span>অফলাইনে সুরক্ষিত</span>
+            <div class="flex gap-3">
+                <button onclick="exportData()" class="text-emerald-700 hover:underline"><i class="fa-solid fa-download"></i> ব্যাকআপ</button>
+                <label class="text-emerald-700 hover:underline cursor-pointer">
+                    <i class="fa-solid fa-upload"></i> রিস্টোর
+                    <input type="file" onchange="importData(event)" class="hidden" accept=".json">
+                </label>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ➕ ফ্লোটিং প্লাস বাটন -->
+    <button onclick="openModal()" class="fixed bottom-5 right-5 bg-emerald-600 active:bg-emerald-700 text-white w-13 h-13 rounded-full shadow-2xl flex items-center justify-center text-xl z-20 transition transform active:scale-90 border-2 border-white p-3.5">
+        <i class="fa-solid fa-plus text-2xl"></i>
+    </button>
+
+    <!-- 📝 নতুন ওষুধ যোগ / এডিট মডাল -->
+    <div id="medicineModal" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center hidden">
+        <div class="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md p-5 shadow-2xl">
+            <div class="flex justify-between items-center pb-3 border-b mb-3">
+                <h3 id="modalTitle" class="font-bold text-base text-slate-800">নতুন ওষুধ যোগ করুন</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-xl p-1"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="medicineForm" onsubmit="saveMedicine(event)" class="space-y-3">
+                <input type="hidden" id="editId">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ওষুধের নাম (লম্বা নামও লিখতে পারেন) *</label>
+                    <input type="text" id="medName" required placeholder="যেমন: Cefuroxime Axetil 500mg" 
+                           class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-600 text-sm font-semibold">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">কোম্পানি *</label>
+                        <input type="text" id="medCompany" list="companyList" required placeholder="যেমন: Square" 
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-600 text-sm font-semibold">
+                        <datalist id="companyList">
+                            <option value="Square"><option value="Incepta"><option value="Beximco">
+                            <option value="Renata"><option value="Eskayef"><option value="Acme">
+                            <option value="Aristopharma"><option value="ACI"><option value="Healthcare">
+                            <option value="Opsonin"><option value="Popular"><option value="Radiant">
+                            <option value="Drug International"><option value="Orion">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">দোকানের তাক (Rack) *</label>
+                        <input type="text" id="medRack" required placeholder="যেমন: A-1, B-2" 
+                               class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-600 text-sm font-semibold">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">বর্তমান অবস্থা</label>
+                    <select id="medStatus" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-600 text-sm font-semibold bg-white">
+                        <option value="in_stock">🟢 পর্যাপ্ত আছে (দোকানে আছে)</option>
+                        <option value="low_stock">🟡 গোডাউন থেকে আনতে হবে (তাতে কম)</option>
+                        <option value="out_of_stock">🔴 স্টক শেষ (কোম্পানি অর্ডার দিন)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">গোডাউনের অবস্থান / বিশেষ নোট</label>
+                    <textarea id="medNote" rows="2" placeholder="যেমন: গোডাউনের রুম-২, কার্টন-৫ এ অতিরিক্ত আছে" 
+                              class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-emerald-600 text-xs"></textarea>
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <button type="button" onclick="closeModal()" class="w-1/2 bg-slate-200 text-slate-700 py-2.5 rounded-lg font-bold text-sm">বাতিল</button>
+                    <button type="submit" class="w-1/2 bg-emerald-700 text-white py-2.5 rounded-lg font-bold text-sm">সংরক্ষণ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const sampleData = [
+            { id: 1, name: "Napa Extra Tablet (500mg + 65mg)", company: "Beximco", rack: "A-1", status: "in_stock", note: "গোডাউন রুম-১ কার্টনে ৫ বক্স আছে" },
+            { id: 2, name: "Cefuroxime Axetil + Clavulanic Acid 500mg", company: "Square", rack: "B-2", status: "out_of_stock", note: "গোডাউনেও শেষ, জরুরি অর্ডার দিন" },
+            { id: 3, name: "Ace Plus Tablet", company: "Square", rack: "A-1", status: "out_of_stock", note: "" },
+            { id: 4, name: "Pantonix 20 Gastro-resistant Tablet", company: "Incepta", rack: "B-1", status: "out_of_stock", note: "চালান এলে আগে তাক ভরবেন" },
+            { id: 5, name: "Monas 10mg Chewable Tablet", company: "Acme", rack: "C-1", status: "low_stock", note: "গোডাউন র‍্যাক-৪ থেকে ২ বক্স আনুন" },
+            { id: 6, name: "Insulin Mixtard 30 HM 100 IU/ml", company: "Novo Nordisk", rack: "ফ্রিজ-১", status: "in_stock", note: "সবসময় ২° - ৮° তাপমাত্রায় ফ্রিজে রাখুন" }
+        ];
+
+        let medicines = JSON.parse(localStorage.getItem('cards_pharma_db')) || sampleData;
+        let activeSpotlightId = null;
+        let currentFilter = 'all';
+
+        function saveData() {
+            localStorage.setItem('cards_pharma_db', JSON.stringify(medicines));
+            renderList();
+            updateStats();
+        }
+
+        function getStatusBadge(status) {
+            if(status === 'out_of_stock') return `<span class="bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-md text-[10.5px] font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-red-600"></span> শেষ (অর্ডার)</span>`;
+            if(status === 'low_stock') return `<span class="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md text-[10.5px] font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> গোডাউন লিস্ট</span>`;
+            return `<span class="bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md text-[10.5px] font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> পর্যাপ্ত আছে</span>`;
+        }
+
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            
+            ['all', 'out_of_stock', 'low_stock'].forEach(type => {
+                const btn = document.getElementById(type === 'all' ? 'tabAll' : (type === 'out_of_stock' ? 'tabOut' : 'tabLow'));
+                if(type === filterType) {
+                    btn.className = "filter-tab active py-2 rounded-xl text-xs font-bold transition flex flex-col items-center bg-emerald-700 text-white shadow";
+                } else {
+                    const color = type === 'out_of_stock' ? 'text-red-600' : (type === 'low_stock' ? 'text-amber-600' : 'text-slate-700');
+                    btn.className = `filter-tab py-2 rounded-xl text-xs font-bold transition flex flex-col items-center bg-white ${color} border border-slate-200 shadow-xs`;
+                }
+            });
+
+            renderList(document.getElementById("searchInput").value.trim());
+        }
+
+        // 🎨 মোবাইল-ফ্রেন্ডলি কার্ড রেন্ডার
+        function renderList(query = "") {
+            const listEl = document.getElementById("medicineList");
+            const companyContainer = document.getElementById("companyOrderContainer");
+
+            let filtered = medicines;
+            if(query) {
+                filtered = filtered.filter(m => 
+                    m.name.toLowerCase().includes(query.toLowerCase()) || 
+                    (m.company && m.company.toLowerCase().includes(query.toLowerCase())) ||
+                    m.rack.toLowerCase().includes(query.toLowerCase())
+                );
+            }
+
+            // আউট অফ স্টক ভিউ (কোম্পানি ভিত্তিক গ্রুপিং)
+            if(currentFilter === 'out_of_stock') {
+                listEl.classList.add("hidden");
+                companyContainer.classList.remove("hidden");
+                renderCompanyGroupedOrders(filtered.filter(m => m.status === 'out_of_stock'));
+                return;
+            }
+
+            listEl.classList.remove("hidden");
+            companyContainer.classList.add("hidden");
+            listEl.innerHTML = "";
+
+            if(currentFilter === 'low_stock') {
+                filtered = filtered.filter(m => m.status === 'low_stock');
+            }
+
+            if(filtered.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-10 text-gray-400 text-xs font-semibold">কোন ওষুধ পাওয়া যায়নি</div>`;
+                return;
+            }
+
+            filtered.forEach(med => {
+                const card = document.createElement("div");
+                card.className = "bg-white rounded-xl p-3 border border-slate-200 shadow-xs flex flex-col gap-2 transition hover:border-slate-300";
+                
+                card.innerHTML = `
+                    <!-- সারি ১: লম্বা নাম ও বড় তাক স্ট্যাম্প -->
+                    <div class="flex items-start justify-between gap-2.5">
+                        <div class="flex-1 pr-1">
+                            <h4 class="font-bold text-slate-900 text-[13.5px] leading-snug break-words">
+                                ${med.name}
+                            </h4>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="inline-flex items-center text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                    <i class="fa-regular fa-building text-[9px] mr-1 text-slate-400"></i>${med.company || 'অন্যান্য'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 🏷️ তাক নম্বর স্ট্যাম্প (Dedicated Ticket Badge) -->
+                        <div class="shrink-0 text-center bg-blue-700 text-white px-2 py-1 rounded-lg shadow-xs min-w-[52px]">
+                            <span class="block text-[8px] font-normal tracking-wider text-blue-100 leading-none uppercase">তাক</span>
+                            <span class="text-xs font-black leading-tight">${med.rack}</span>
+                        </div>
+                    </div>
+
+                    <!-- সারি ২: স্ট্যাটাস ও বাটনসমূহ -->
+                    <div class="flex items-center justify-between border-t border-slate-100 pt-2">
+                        <div>
+                            ${getStatusBadge(med.status)}
+                        </div>
+                        <div class="flex items-center gap-2.5 text-slate-400">
+                            <button onclick="editMedicine(${med.id})" class="hover:text-blue-600 p-1 text-xs font-semibold flex items-center gap-1">
+                                <i class="fa-regular fa-pen-to-square"></i> <span class="text-[10px]">এডিট</span>
+                            </button>
+                            <button onclick="deleteMedicine(${med.id})" class="hover:text-red-600 p-1 text-xs font-semibold flex items-center gap-1">
+                                <i class="fa-regular fa-trash-can"></i> <span class="text-[10px]">মুছুন</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- সারি ৩: গোডাউন নোট (যদি থাকে) -->
+                    ${med.note ? `
+                        <div class="bg-amber-50/70 border border-amber-200/60 rounded-lg px-2 py-1 text-[11px] text-amber-950 flex items-start gap-1.5">
+                            <i class="fa-solid fa-warehouse text-amber-600 text-[10px] mt-0.5 shrink-0"></i>
+                            <span class="leading-tight break-words">${med.note}</span>
+                        </div>
+                    ` : ''}
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        // কোম্পানি অনুযায়ী অর্ডার গ্রুপিং
+        function renderCompanyGroupedOrders(items) {
+            const container = document.getElementById("companyOrderContainer");
+            container.innerHTML = "";
+
+            if(items.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-gray-400 text-xs font-semibold">কোন কোম্পানির ওষুধ শেষ নেই!</div>`;
+                return;
+            }
+
+            const grouped = {};
+            items.forEach(med => {
+                const comp = med.company ? med.company.trim() : "অন্যান্য কোম্পানি";
+                if(!grouped[comp]) grouped[comp] = [];
+                grouped[comp].push(med);
+            });
+
+            for(let company in grouped) {
+                const medList = grouped[company];
+                const card = document.createElement("div");
+                card.className = "bg-white rounded-xl shadow-xs border border-red-200 overflow-hidden";
+                
+                let listHtml = medList.map((m, idx) => `
+                    <div class="flex justify-between items-center py-2 px-3 border-b border-slate-100 text-xs font-semibold text-slate-800">
+                        <span class="pr-2 leading-tight break-words">${idx + 1}. ${m.name}</span>
+                        <span class="text-[10px] text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 font-bold shrink-0">তাক: ${m.rack}</span>
+                    </div>
+                `).join("");
+
+                card.innerHTML = `
+                    <div class="bg-red-50/80 px-3.5 py-2.5 flex justify-between items-center border-b border-red-100">
+                        <div>
+                            <h4 class="font-bold text-red-900 text-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-building-shield text-red-600 text-xs"></i> ${company}
+                            </h4>
+                            <span class="text-[10px] text-red-700 font-medium">অর্ডার প্রয়োজন: ${medList.length} টি</span>
+                        </div>
+                        <button onclick="copySingleCompanyOrder('${company}')" class="bg-red-600 active:bg-red-700 text-white text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-xs">
+                            <i class="fa-regular fa-copy"></i> কপি
+                        </button>
+                    </div>
+                    <div class="divide-y divide-slate-100">
+                        ${listHtml}
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        function copySingleCompanyOrder(companyName) {
+            const items = medicines.filter(m => m.status === 'out_of_stock' && (m.company ? m.company.trim() : "অন্যান্য কোম্পানি") === companyName);
+            if(items.length === 0) return;
+
+            let text = `📋 ${companyName} এর ওষুধের অর্ডার তালিকা:\n`;
+            items.forEach((m, idx) => {
+                text += `${idx + 1}. ${m.name}\n`;
+            });
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert(`✅ ${companyName}-এর অর্ডার কপি হয়েছে! SR-কে হোয়াটসঅ্যাপে পাঠিয়ে দিন।`);
+            }).catch(() => {
+                prompt("নিচের তালিকাটি কপি করুন:", text);
+            });
+        }
+
+        // Live Search Handling
+        function handleSearch() {
+            const query = document.getElementById("searchInput").value.trim().toLowerCase();
+            renderList(query);
+
+            const resultBox = document.getElementById("quickResult");
+
+            if (query.length === 0) {
+                resultBox.classList.add("hidden");
+                activeSpotlightId = null;
+                return;
+            }
+
+            const match = medicines.find(m => m.name.toLowerCase().startsWith(query)) || 
+                          medicines.find(m => m.name.toLowerCase().includes(query));
+
+            if (match) {
+                activeSpotlightId = match.id;
+                document.getElementById("resName").innerText = match.name;
+                document.getElementById("resCompany").innerText = match.company || "অন্যান্য";
+                document.getElementById("resRack").innerText = match.rack;
+
+                updateSpotlightButtons(match.status);
+
+                const noteRow = document.getElementById("resNoteRow");
+                if (match.note && match.note.trim() !== "") {
+                    document.getElementById("resNote").innerText = match.note;
+                    noteRow.classList.remove("hidden");
+                } else {
+                    noteRow.classList.add("hidden");
+                }
+
+                resultBox.classList.remove("hidden");
+            } else {
+                resultBox.classList.add("hidden");
+                activeSpotlightId = null;
+            }
+        }
+
+        function updateSpotlightButtons(status) {
+            const bIn = document.getElementById("btnIn");
+            const bLow = document.getElementById("btnLow");
+            const bOut = document.getElementById("btnOut");
+
+            bIn.className = status === 'in_stock' ? "px-2 py-0.5 rounded text-[11px] font-black bg-emerald-600 text-white shadow" : "px-2 py-0.5 rounded text-[11px] font-semibold bg-white text-emerald-700 border border-emerald-200";
+            bLow.className = status === 'low_stock' ? "px-2 py-0.5 rounded text-[11px] font-black bg-amber-500 text-white shadow" : "px-2 py-0.5 rounded text-[11px] font-semibold bg-white text-amber-700 border border-amber-200";
+            bOut.className = status === 'out_of_stock' ? "px-2 py-0.5 rounded text-[11px] font-black bg-red-600 text-white shadow" : "px-2 py-0.5 rounded text-[11px] font-semibold bg-white text-red-700 border border-red-200";
+        }
+
+        function updateActiveStatus(newStatus) {
+            if (!activeSpotlightId) return;
+            const med = medicines.find(m => m.id === activeSpotlightId);
+            if (med) {
+                med.status = newStatus;
+                saveData();
+                updateSpotlightButtons(newStatus);
+            }
+        }
+
+        function clearSearch() {
+            const input = document.getElementById("searchInput");
+            input.value = "";
+            handleSearch();
+            input.focus();
+        }
+
+        function updateStats() {
+            document.getElementById("countAll").innerText = `${medicines.length} টি`;
+            document.getElementById("countOut").innerText = `${medicines.filter(m => m.status === 'out_of_stock').length} টি`;
+            document.getElementById("countLow").innerText = `${medicines.filter(m => m.status === 'low_stock').length} টি`;
+        }
+
+        // Modal Handlers
+        function openModal() {
+            document.getElementById("medicineForm").reset();
+            document.getElementById("editId").value = "";
+            document.getElementById("medStatus").value = "in_stock";
+            document.getElementById("modalTitle").innerText = "নতুন ওষুধ যোগ করুন";
+            document.getElementById("medicineModal").classList.remove("hidden");
+            document.getElementById("medName").focus();
+        }
+
+        function closeModal() {
+            document.getElementById("medicineModal").classList.add("hidden");
+        }
+
+        function saveMedicine(e) {
+            e.preventDefault();
+            const id = document.getElementById("editId").value;
+            const name = document.getElementById("medName").value.trim();
+            const company = document.getElementById("medCompany").value.trim();
+            const rack = document.getElementById("medRack").value.trim();
+            const status = document.getElementById("medStatus").value;
+            const note = document.getElementById("medNote").value.trim();
+
+            if (id) {
+                const index = medicines.findIndex(m => m.id == id);
+                if (index !== -1) {
+                    medicines[index] = { id: parseInt(id), name, company, rack, status, note };
+                }
+            } else {
+                medicines.unshift({ id: Date.now(), name, company, rack, status, note });
+            }
+
+            saveData();
+            closeModal();
+            handleSearch();
+        }
+
+        function editMedicine(id) {
+            const med = medicines.find(m => m.id === id);
+            if (!med) return;
+
+            document.getElementById("editId").value = med.id;
+            document.getElementById("medName").value = med.name;
+            document.getElementById("medCompany").value = med.company || "";
+            document.getElementById("medRack").value = med.rack;
+            document.getElementById("medStatus").value = med.status;
+            document.getElementById("medNote").value = med.note || "";
+
+            document.getElementById("modalTitle").innerText = "তথ্য সংশোধন করুন";
+            document.getElementById("medicineModal").classList.remove("hidden");
+        }
+
+        function deleteMedicine(id) {
+            if (confirm("এই ওষুধটি তালিকা থেকে বাদ দেবেন?")) {
+                medicines = medicines.filter(m => m.id !== id);
+                saveData();
+                handleSearch();
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(medicines));
+            const a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", `pharma_stock_${new Date().toISOString().slice(0,10)}.json`);
+            a.click();
+        }
+
+        function importData(event) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        medicines = imported;
+                        saveData();
+                        alert("ডাটা রিস্টোর হয়েছে!");
+                    }
+                } catch(err) {
+                    alert("ভুল ফাইল সিলেক্ট করেছেন!");
+                }
+            };
+            if(event.target.files[0]) reader.readAsText(event.target.files[0]);
+        }
+
+        window.onload = function() {
+            renderList();
+            updateStats();
+        };
+    </script>
+</body>
+</html>

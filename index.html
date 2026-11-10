@@ -1,163 +1,182 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light only">
-<meta name="theme-color" content="#e3f1e8">
-<title>অর্ডার করুন</title>
+<meta name="theme-color" content="#0f3d2a">
+<title>কেমিস্ট কর্নার</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600&family=Noto+Serif+Bengali:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#e3f1e8;--card:#ffffff;--ink:#12261b;--muted:#4a6355;--line:#c3d9ca;--accent:#128c4a;--accent-ink:#ffffff;--on:#e6f5ec;color-scheme:light only;
-box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-*{box-sizing:border-box}
-html{background:var(--bg)}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif;line-height:1.6}
-main{max-width:560px;margin:0 auto;padding:20px 16px 120px}
-h1{font-size:1.5rem;margin:8px 0 4px;color:var(--ink)}
-p.sub{margin:0 0 16px;color:var(--muted)}
-input[type=search]{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:12px}
-input[type=search]::placeholder{color:#7a9283}
-ul{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
-li{border-bottom:1px solid var(--line)}
-li:last-child{border-bottom:0}
-label.row{display:flex;align-items:center;gap:12px;padding:14px;cursor:pointer;color:var(--ink)}
-label.row input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}
-.name{flex:1}
-.qty{display:none;align-items:center;gap:8px}
-li.on .qty{display:flex}
-li.on{background:var(--on)}
-.qty button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:1.1rem;cursor:pointer}
-.qty span{min-width:20px;text-align:center;color:var(--ink)}
-.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
-.bar div{max-width:560px;margin:0 auto}
-#send{width:100%;padding:14px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;font-size:1.05rem;cursor:pointer}
-#send:disabled{opacity:.45;cursor:not-allowed}
-button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.empty{padding:16px;color:var(--muted)}
+:root{
+  --deep:#0f3d2a;--leaf:#128c4a;--mint:#e3f1e8;--paper:#f5faf6;--card:#fff;
+  --ink:#12261b;--muted:#4a6355;--line:#c3d9ca;--sun:#d9a441;--sun-soft:#fbf1da;--sun-ink:#7a5a12;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;height:100%}
+body{
+  font-family:"Hind Siliguri","Noto Sans Bengali",system-ui,sans-serif;
+  background:var(--paper);color:var(--ink);line-height:1.45;
+  height:100vh;height:100dvh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* ---------- Hero (compact) ---------- */
+.hero{
+  position:relative;flex:none;background:var(--deep);color:#fff;
+  padding:calc(env(safe-area-inset-top) + 18px) 20px 40px;overflow:hidden;
+}
+.hero::before{
+  content:"";position:absolute;width:260px;height:260px;right:-90px;top:-110px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#1d7a4c,rgba(29,122,76,0) 70%);
+}
+.hero::after{
+  content:"";position:absolute;width:200px;height:200px;left:-90px;bottom:-120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(217,164,65,.28),rgba(217,164,65,0) 70%);
+}
+.hero-inner{position:relative;max-width:640px;margin:0 auto;display:flex;align-items:center;gap:14px;animation:rise .6s ease both}
+.mark{flex:none;width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);display:grid;place-items:center}
+.mark svg{width:26px;height:26px}
+h1{font-family:"Noto Serif Bengali","Hind Siliguri",serif;font-weight:700;font-size:clamp(1.4rem,5.4vw,1.9rem);line-height:1.25}
+.hero p{color:#cfe7d7;font-size:.95rem;margin-top:2px}
+.wave{position:absolute;left:0;right:0;bottom:-1px;width:100%;height:28px;display:block}
+
+/* ---------- Tiles ---------- */
+main{
+  flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;
+  padding:0 14px calc(env(safe-area-inset-bottom) + 14px);
+  display:flex;
+}
+.grid{
+  flex:1;min-height:0;width:100%;
+  display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:minmax(0,1fr);gap:12px;
+}
+.tile{
+  position:relative;min-width:0;min-height:0;
+  display:flex;flex-direction:column;justify-content:space-between;
+  background:var(--card);border:1px solid var(--line);border-radius:20px;
+  padding:14px;text-decoration:none;color:inherit;overflow:hidden;
+  box-shadow:0 8px 22px -14px rgba(15,61,42,.4);
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+a.tile:hover{transform:translateY(-3px);border-color:var(--leaf);box-shadow:0 14px 26px -14px rgba(15,61,42,.5)}
+a.tile:active{transform:scale(.98)}
+a.tile:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+.icon{flex:none;width:clamp(40px,7.5vh,56px);aspect-ratio:1;border-radius:16px;background:var(--mint);color:var(--leaf);display:grid;place-items:center}
+.icon svg{width:56%;height:56%}
+.txt{min-height:0}
+.tile h2{font-family:"Noto Serif Bengali","Hind Siliguri",serif;font-size:clamp(.98rem,3.9vw,1.15rem);line-height:1.3}
+.tile p{color:var(--muted);font-size:clamp(.78rem,3vw,.9rem);line-height:1.35;margin-top:2px}
+.badge{
+  position:absolute;top:12px;right:12px;font-size:.74rem;font-weight:500;
+  padding:1px 10px;border-radius:99px;background:var(--sun-soft);color:var(--sun-ink);
+}
+
+/* highlighted gift tile */
+.tile.gift{background:linear-gradient(160deg,#fff 40%,var(--sun-soft));border-color:#ecd49b}
+.tile.gift .icon{background:var(--sun-soft);color:#a8760e}
+a.tile.gift:hover{border-color:var(--sun)}
+
+/* upcoming tiles */
+.tile.soon{background:#fafcfa;border-style:dashed;box-shadow:none;cursor:default}
+.tile.soon .icon{background:#eef1ee;color:#7b8a80}
+.tile.soon h2{color:#4d5f54}
+.tile.more{align-items:center;justify-content:center;text-align:center;color:#8a9a90;font-size:.9rem}
+.tile.more svg{width:28px;height:28px;margin-bottom:4px}
+
+/* short phones: hide descriptions so all tiles stay in view */
+@media (max-height:640px){
+  .tile p{display:none}
+  .tile{padding:12px}
+}
+@media (max-height:560px){
+  .hero{padding-bottom:34px}
+  .hero p{display:none}
+}
+
+/* wider screens */
+@media (min-width:700px){
+  .hero{padding-bottom:46px}
+  main{padding-bottom:20px}
+  .tile{padding:18px}
+}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.hero-inner{animation:none}.tile{transition:none}}
 </style>
 </head>
 <body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.5 20.5a5 5 0 0 1-7-7l9-9a5 5 0 0 1 7 7z"/><path d="M8.5 8.5l7 7"/>
+      </svg>
+    </div>
+    <div>
+      <h1>কেমিস্ট কর্নার</h1>
+      <p>অর্ডার, হিসাব আর উপহার এক জায়গায়</p>
+    </div>
+  </div>
+  <svg class="wave" viewBox="0 0 1440 28" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,28 L0,12 C240,28 480,0 760,10 C1040,20 1220,24 1440,8 L1440,28 Z" fill="#f5faf6"/>
+  </svg>
+</header>
+
 <main>
-<h1>প্রোডাক্ট বেছে নিন</h1>
-<p class="sub">যেগুলো লাগবে টিক দিন, তারপর হোয়াটসঅ্যাপে পাঠান।</p>
-<input type="search" id="q" placeholder="প্রোডাক্ট খুঁজুন" aria-label="প্রোডাক্ট খুঁজুন">
-<ul id="list"></ul>
+  <div class="grid">
+
+    <a class="tile" href="order.html">
+      <div class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 7h13l-1.6 8.2a2 2 0 0 1-2 1.6H9.1a2 2 0 0 1-2-1.6L5.2 4H3"/><circle cx="9.5" cy="20" r="1.2"/><circle cx="16.5" cy="20" r="1.2"/>
+        </svg>
+      </div>
+      <div class="txt"><h2>অর্ডার করুন</h2><p>প্রোডাক্ট বেছে অর্ডার পাঠান</p></div>
+    </a>
+
+    <a class="tile" href="smart-calculator.html">
+      <div class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7"/><path d="M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/>
+        </svg>
+      </div>
+      <div class="txt"><h2>স্মার্ট ক্যালকুলেটর</h2><p>বিক্রয়ের হিসাব ও ক্যাশ মেমো</p></div>
+    </a>
+
+    <a class="tile gift" href="gift-offer.html">
+      <div class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/>
+          <path d="M12 8c-1-3-2.5-4.5-4.5-4.5a2 2 0 0 0 0 4.5zM12 8c1-3 2.500-4.500 4.500-4.500a2 2 0 0 1 0 4.500z"/>
+        </svg>
+      </div>
+      <div class="txt"><h2>উপহার অফার</h2><p>টার্গেট পূরণে পান উপহার</p></div>
+    </a>
+
+
+
+<a class="tile" href="pharmacy-management.html">
+      <div class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3.5 9.5L5 4h14l1.5 5.5"/><path d="M3.5 9.5a2.8 2.8 0 0 0 5.5 0 2.8 2.8 0 0 0 6 0 2.8 2.8 0 0 0 5.5 0"/><path d="M5 12.5V20h14v-7.5"/><path d="M10 20v-4.5h4V20"/>
+        </svg>
+      </div>
+      <div class="txt"><h2>ফার্মেসি ম্যানেজমেন্ট</h2><p>তাক ও কোম্পানির অর্ডার ট্র্যাকার</p></div>
+    </a>
+
+    <!-- নতুন টুল এলে এই ঘরটি ব্যবহার করুন বা মুছে দিন -->
+    <div class="tile soon more" aria-hidden="true">
+      <div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <div>আরও টুল আসছে</div>
+      </div>
+    </div>
+
+  </div>
 </main>
-<div class="bar"><div><button id="send" disabled>হোয়াটসঅ্যাপে পাঠান</button></div></div>
-<script>
-// ====== এখানে পরিবর্তন করুন ======
-var WHATSAPP_NUMBER = "8801347527872"; // দেশের কোডসহ, + ছাড়া (বাংলাদেশ: 880 + নম্বর)
-var PRODUCTS = [
-// Cardiac - ছবি ১
-"Tems 20 mg","Tems 40 mg","Tems 80 mg",
-"Tems A 40/5","Tems A 80/5",
-"Tems Plus 40/12.5","Tems Plus 80/12.5",
-"Cardobis 1.25 mg","Cardobis 2.5 mg","Cardobis 5 mg",
-"Cardobis M 2.5/5","Cardobis M 5/5",
-"Cardobis Plus 2.5/6.25","Cardobis Plus 5/6.25",
-"Olmesta 10 mg","Olmesta 20 mg","Olmesta 40 mg",
-"Olmesta M 20/5","Olmesta M 40/5",
-"Olmesta Plus 20/12.5",
-"Amlevo 2.5 mg","Amlevo 5 mg",
-"Cilny 5 mg","Cilny 10 mg",
-"Sympres 0.2 mg","Sympres 0.3 mg",
-// Cardiac - ছবি ২
-"Arnis 50","Arnis 100",
-"Rivarox 2.5 mg","Rivarox 10 mg","Rivarox 15 mg","Rivarox 20 mg",
-"GTN 2.6 SR",
-"Noclog 75 mg",
-"Cardimet MR 35 mg",
-"Tolvan 15 mg",
-"Enorin 40 mg","Enorin 60 mg","Enorin 80 mg",
-"NoPlag 60 mg","NoPlag 90 mg",
-"Dezide 50/25",
-"Edenil",
-"Sentix 0.5 mg","Sentix 1 mg",
-"Sidopin 5 mg",
-// Antidiabetic - ছবি ৩
-"Emazid 10 mg","Emazid 25 mg",
-"Emazid L 10/5","Emazid L 25/5",
-"Emazid M 5/500","Emazid M 12.5/500",
-"Ligazid 5 mg",
-"Ligazid M 2.5/500","Ligazid M 2.5/850","Ligazid M 2.5/1000",
-"Vigamet 50/500","Vigamet 50/800",
-"Glikazid 30 mg","Glikazid 60 mg","Glikazid 80 mg",
-"Glunor 500 mg","Glunor 850 mg","Glunor 500 mg XR",
-"Sitazid M 50/500",
-"Insumin 500 mg",
-  " piozid 15mg",
-  "Tenazid 20mg",
-  "Ridiva 5mg","Ridiva 7.5mg",
-  " Tenalase 50mg injection",
-"exoren 1.25mg","exoren 2.5mg","exoren 5mg",
-"Zepter 2.5 mg","Zepter 5 mg","Zepter 7.5 mg",
-"Aldorin 50 mg","Cifibet 100mg","surliv 150mg","surliv300mg","Duoliv 5mg","Duoliv 10mg","resmit 80mg","resmit 100mg","oroxat 20mg","oroxat 50mg","oroxat 100mg","hemocrit 3000 inj","hemocrit 5000 inj","hemocrit 2000inj","Dephos 500mg","Defalix 65 inj","Renfit 10mg","Renfit 20mg","Fericit 210mg","Vincet 5mg","creston 10mg","lipicon 10mg","cardon 50mg"
-];
-// =================================
-// নামের আগে-পরের বাড়তি ফাঁকা মুছে দেয়
-PRODUCTS = PRODUCTS.map(function(p){return p.trim()});
 
-var sel = {};
-var KEY = "order_selection_v1";
-var list = document.getElementById("list"), q = document.getElementById("q"), send = document.getElementById("send");
-function bn(n){return String(n).replace(/\d/g,function(d){return "০১২৩৪৫৬৭৮৯"[d]})}
-
-// সেভ: প্রোডাক্টের নাম ধরে রাখা হয়, তাই লিস্ট বদলালেও সমস্যা নেই
-function save(){
-  try{
-    var o = {};
-    PRODUCTS.forEach(function(p,i){ if(sel[i]>0) o[p]=sel[i]; });
-    if(Object.keys(o).length) localStorage.setItem(KEY, JSON.stringify(o));
-    else localStorage.removeItem(KEY);
-  }catch(e){}
-}
-function load(){
-  try{
-    var o = JSON.parse(localStorage.getItem(KEY) || "{}");
-    PRODUCTS.forEach(function(p,i){ if(o[p]>0) sel[i]=o[p]; });
-  }catch(e){}
-}
-
-function render(){
-  var t = q.value.trim().toLowerCase(), html = "";
-  PRODUCTS.forEach(function(p,i){
-    if(t && p.toLowerCase().indexOf(t)<0) return;
-    var on = sel[i]>0;
-    html += '<li class="'+(on?'on':'')+'"><label class="row"><input type="checkbox" data-i="'+i+'"'+(on?' checked':'')+'><span class="name">'+p+'</span>'+
-      '<span class="qty"><button type="button" data-m="'+i+'" aria-label="কমান">−</button><span>'+bn(sel[i]||0)+'</span><button type="button" data-p="'+i+'" aria-label="বাড়ান">+</button></span></label></li>';
-  });
-  list.innerHTML = html || '<li class="empty">কিছু পাওয়া যায়নি</li>';
-  var n = Object.keys(sel).filter(function(k){return sel[k]>0}).length;
-  send.disabled = n===0;
-  send.textContent = n ? "হোয়াটসঅ্যাপে পাঠান ("+bn(n)+"টি প্রোডাক্ট)" : "হোয়াটসঅ্যাপে পাঠান";
-  save();
-}
-list.addEventListener("click",function(e){
-  var b = e.target.closest("button"); if(!b) return;
-  e.preventDefault();
-  if(b.dataset.p!==undefined) sel[b.dataset.p]=(sel[b.dataset.p]||0)+1;
-  if(b.dataset.m!==undefined){var k=b.dataset.m; sel[k]=Math.max(1,(sel[k]||1)-1);}
-  render();
-});
-list.addEventListener("change",function(e){
-  var i = e.target.dataset.i; if(i===undefined) return;
-  if(e.target.checked) sel[i]=1; else delete sel[i];
-  render();
-});
-q.addEventListener("input",render);
-send.addEventListener("click",function(){
-  var lines = ["আসসালামু আলাইকুম, আমি নিচের প্রোডাক্টগুলো অর্ডার করতে চাই:",""];
-  var c = 0;
-  PRODUCTS.forEach(function(p,i){ if(sel[i]>0){ c++; lines.push(bn(c)+". "+p+" — "+bn(sel[i])+" টি"); } });
-  var url = "https://wa.me/"+WHATSAPP_NUMBER+"?text="+encodeURIComponent(lines.join("\n"));
-  window.open(url,"_blank");
-  // অর্ডার পাঠানো শেষ, তাই সিলেকশন মুছে ফেলা হচ্ছে
-  sel = {};
-  q.value = "";
-  render();
-});
-load();
-render();
-</script>
 </body>
 </html>
